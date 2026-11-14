@@ -86,5 +86,8 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "attendpro-fallback-secret-2026",
+  secret:
+    process.env.NEXTAUTH_SECRET ||
+    process.env.AUTH_SECRET ||
+    "attendpro-super-secret-key-2026-coffee-shop",
 };

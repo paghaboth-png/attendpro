@@ -52,7 +52,7 @@ export default function LoginPage() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Language Switcher at Top Right */}
-      <div className="absolute top-6 right-6 flex items-center gap-2 bg-slate-800/80 backdrop-blur border border-slate-700/60 rounded-full p-1 shadow-lg">
+      <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-slate-800/90 backdrop-blur border border-slate-700/60 rounded-full p-1 shadow-lg">
         <button
           type="button"
           onClick={() => setLocale("km")}
