@@ -8,9 +8,17 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-khmer)", "var(--font-inter)", "sans-serif"],
+      },
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        navy: {
+          950: "#070c1a",
+          900: "#0b1329",
+          850: "#0f1a36",
+          800: "#142247",
+          700: "#1e3160",
+        },
       },
     },
   },
