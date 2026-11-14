@@ -1,0 +1,16 @@
+{
+  "name": "AttendPro - TheDemo Coffee",
+  "short_name": "AttendPro",
+  "description": "Employee Attendance Management System with GPS & Selfie",
+  "start_url": "/checkin",
+  "display": "standalone",
+  "background_color": "#070c1a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
