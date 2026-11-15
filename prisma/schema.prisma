@@ -53,21 +53,24 @@ model Company {
 }
 
 model Branch {
-  id           String       @id @default(cuid())
-  companyId    String
-  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name         String
-  lat          Float
-  lng          Float
-  radiusMeters Int          @default(100)
-  address      String?
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  employees    Employee[]
-  attendances  Attendance[]
-  holidays     Holiday[]
-  payrolls     Payroll[]
+  id               String       @id @default(cuid())
+  companyId        String
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name             String
+  lat              Float
+  lng              Float
+  radiusMeters     Int          @default(100)
+  address          String?
+  isActive         Boolean      @default(true)
+  qrToken          String?      @unique
+  qrSecret         String?
+  qrTokenUpdatedAt DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  employees        Employee[]
+  attendances      Attendance[]
+  holidays         Holiday[]
+  payrolls         Payroll[]
 }
 
 model Department {
@@ -186,27 +189,31 @@ model Employee {
 }
 
 model Attendance {
-  id            String           @id @default(cuid())
-  employeeId    String
-  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  branchId      String
-  branch        Branch           @relation(fields: [branchId], references: [id])
-  date          String           // YYYY-MM-DD
-  checkInAt     DateTime?
-  checkOutAt    DateTime?
-  checkInLat    Float?
-  checkInLng    Float?
-  checkInAcc    Float?
-  checkInPhoto  String?
-  checkOutLat   Float?
-  checkOutLng   Float?
-  checkOutAcc   Float?
-  checkOutPhoto String?
-  status        AttendanceStatus @default(GOOD)
-  isManual      Boolean          @default(false)
-  note          String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id               String           @id @default(cuid())
+  employeeId       String
+  employee         Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  branchId         String
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  date             String           // YYYY-MM-DD
+  checkInAt        DateTime?
+  checkOutAt       DateTime?
+  checkInLat       Float?
+  checkInLng       Float?
+  checkInAcc       Float?
+  checkInPhoto     String?
+  checkOutLat      Float?
+  checkOutLng      Float?
+  checkOutAcc      Float?
+  checkOutPhoto    String?
+  status           AttendanceStatus @default(GOOD)
+  isManual         Boolean          @default(false)
+  method           String?          @default("PIN") // "QR", "PIN", "DASHBOARD", "MANUAL"
+  checkInDistance  Float?
+  checkOutDistance Float?
+  deviceInfo       String?
+  note             String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@unique([employeeId, date])
 }

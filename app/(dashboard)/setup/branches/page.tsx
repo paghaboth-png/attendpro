@@ -12,13 +12,16 @@ import {
   CheckCircle,
   X,
   AlertCircle,
+  QrCode,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { BranchQrModal } from "@/components/branch-qr-modal";
 
 export default function BranchesPage() {
   const { t } = useI18n();
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedQrBranchId, setSelectedQrBranchId] = useState<string | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -209,17 +212,29 @@ export default function BranchesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px]">
-                <span
-                  className={`px-2.5 py-0.5 rounded-full font-semibold border flex items-center gap-1 ${
-                    b.isActive
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      : "bg-slate-800 text-slate-400 border-slate-700"
-                  }`}
-                >
-                  <CheckCircle className="w-3 h-3" />
-                  {b.isActive ? "សកម្ម (Active)" : "អសកម្ម"}
-                </span>
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800/40">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full font-semibold border flex items-center gap-1 ${
+                      b.isActive
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : "bg-slate-800 text-slate-400 border-slate-700"
+                    }`}
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    {b.isActive ? "សកម្ម (Active)" : "អសកម្ម"}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedQrBranchId(b.id)}
+                    className="px-2.5 py-1 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 font-semibold text-xs flex items-center gap-1.5 transition shadow-xs"
+                    title="បើកមើល QR Code Check-in សម្រាប់សាខានេះ"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>QR Check-in</span>
+                  </button>
+                </div>
 
                 <a
                   href={`https://www.google.com/maps?q=${b.lat},${b.lng}`}
@@ -228,12 +243,22 @@ export default function BranchesPage() {
                   className="text-blue-400 hover:underline flex items-center gap-1 text-[11px]"
                 >
                   <Navigation className="w-3 h-3" />
-                  <span>បើកមើលលើ Google Maps</span>
+                  <span>Google Maps</span>
                 </a>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Branch QR Modal */}
+      {selectedQrBranchId && (
+        <BranchQrModal
+          branchId={selectedQrBranchId}
+          isOpen={!!selectedQrBranchId}
+          onClose={() => setSelectedQrBranchId(null)}
+          onRegenerated={fetchBranches}
+        />
       )}
 
       {/* Add / Edit Modal */}

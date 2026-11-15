@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-provider";
 
+import { BranchQrModal } from "@/components/branch-qr-modal";
+
 interface TopBarProps {
   onOpenSidebar: () => void;
 }
@@ -37,7 +39,7 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [qrBranchId, setQrBranchId] = useState<string | null>(null);
 
   // Notification State
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -100,16 +102,14 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
   };
 
   const openQrModal = async () => {
-    setQrModalOpen(true);
-    if (!qrCodeDataUrl) {
-      try {
-        const res = await fetch("/api/qrcode?url=https://attendpro-one.vercel.app/checkin");
-        const json = await res.json();
-        if (json.success) {
-          setQrCodeDataUrl(json.qr);
-        }
-      } catch {}
-    }
+    try {
+      const res = await fetch("/api/branches");
+      const json = await res.json();
+      if (json.success && json.data?.length > 0) {
+        setQrBranchId(json.data[0].id);
+        setQrModalOpen(true);
+      }
+    } catch {}
   };
 
   const user = session?.user as any;
@@ -366,56 +366,13 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
         </div>
       </header>
 
-      {/* QR Code Modal */}
-      {qrModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-center space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-white font-bold text-sm">
-                <Smartphone className="w-4 h-4 text-blue-500" />
-                <span>ស្កេន QR Code លើទូរស័ព្ទដៃ</span>
-              </div>
-              <button
-                onClick={() => setQrModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 bg-white rounded-2xl inline-block shadow-inner mx-auto">
-              {qrCodeDataUrl ? (
-                <img
-                  src={qrCodeDataUrl}
-                  alt="QR Code AttendPro"
-                  className="w-56 h-56 mx-auto"
-                />
-              ) : (
-                <div className="w-56 h-56 flex items-center justify-center text-xs text-slate-500">
-                  កំពុងបង្កើត QR Code...
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-1.5 text-xs">
-              <div className="font-bold text-white">
-                តំណភ្ជាប់ស្កេនវត្តមាន (Mobile Check-in)
-              </div>
-              <p className="text-[11px] text-slate-400">
-                បើកកាមេរ៉ាទូរស័ព្ទស្កេនរូបភាព QR នេះ ដើម្បីបើកទំព័រស្កេនវត្តមានផ្ទាល់លើទូរស័ព្ទ
-              </p>
-              <a
-                href="https://attendpro-one.vercel.app/checkin"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-blue-400 hover:underline font-mono text-[11px] pt-1"
-              >
-                <span>https://attendpro-one.vercel.app/checkin</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </div>
-        </div>
+      {/* Unified Branch QR Code Modal */}
+      {qrModalOpen && qrBranchId && (
+        <BranchQrModal
+          branchId={qrBranchId}
+          isOpen={qrModalOpen}
+          onClose={() => setQrModalOpen(false)}
+        />
       )}
     </>
   );
