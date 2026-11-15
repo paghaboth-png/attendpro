@@ -23,6 +23,9 @@ import {
   Square,
   Moon,
   Briefcase,
+  KeyRound,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { DatePicker } from "@/components/date-picker";
@@ -105,6 +108,36 @@ export default function EmployeesPage() {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+
+  // Reset PIN modal state
+  const [resetPinResult, setResetPinResult] = useState<{
+    code: string;
+    name: string;
+    newPin: string;
+  } | null>(null);
+  const [copiedPin, setCopiedPin] = useState(false);
+
+  const handleResetPin = async (empId: string) => {
+    if (!confirm("តើលោកអ្នកពិតជាចង់ Reset PIN សម្រាប់បុគ្គលិកនេះមែនទេ?")) return;
+    try {
+      const res = await fetch(`/api/employees/${empId}/reset-pin`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetPinResult({
+          code: data.employeeCode,
+          name: data.employeeName,
+          newPin: data.newPin,
+        });
+        fetchData();
+      } else {
+        alert(data.error || "បរាជ័យក្នុងការ Reset PIN");
+      }
+    } catch {
+      alert("មានបញ្ហាបច្ចេកទេស");
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -748,13 +781,24 @@ export default function EmployeesPage() {
                   </div>
 
                   {/* Security PIN & Salary */}
-                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-800/60">
-                    <span className="flex items-center gap-1.5 text-slate-400">
-                      <Lock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>PIN:</span>
-                      <strong className="font-mono text-amber-300 font-bold tracking-widest">{emp.pin || "1234"}</strong>
-                    </span>
-                    <span className="font-mono text-emerald-400 font-bold text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200 dark:border-slate-800/60">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                        <Lock className="w-3.5 h-3.5 text-amber-500" />
+                        <span>PIN:</span>
+                        <strong className="font-mono text-slate-700 dark:text-slate-300 font-bold tracking-widest">●●●●</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleResetPin(emp.id)}
+                        className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition flex items-center gap-1"
+                        title="Reset PIN ចៃដន្យថ្មី"
+                      >
+                        <KeyRound className="w-2.5 h-2.5" />
+                        <span>Reset</span>
+                      </button>
+                    </div>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       ${emp.baseSalary || 200}/{emp.salaryType === "HOURLY" ? "ម៉ោង" : emp.salaryType === "DAILY" ? "ថ្ងៃ" : "ខែ"}
                     </span>
                   </div>
@@ -1530,6 +1574,82 @@ export default function EmployeesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset PIN Result Modal (Shown Once) */}
+      {resetPinResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setResetPinResult(null);
+                setCopiedPin(false);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/60 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto mb-3">
+              <KeyRound className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Reset PIN ដោយជោគជ័យ
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {resetPinResult.name} ({resetPinResult.code})
+            </p>
+
+            <div className="my-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-2xl font-mono font-extrabold text-amber-600 dark:text-amber-400 tracking-[0.3em] pl-3">
+                {resetPinResult.newPin}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(resetPinResult.newPin);
+                  setCopiedPin(true);
+                  setTimeout(() => setCopiedPin(false), 2000);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold text-xs border border-amber-500/30 flex items-center gap-1.5 transition"
+              >
+                {copiedPin ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>បានចម្លង</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>ចម្លង</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-left mb-5">
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed flex items-start gap-1.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <span>
+                  <strong>ចំណាំសំខាន់៖</strong> លេខ PIN នេះបង្ហាញដល់ Admin តែម្តងគត់ (ក្នុងប្រព័ន្ធរក្សាទុកជា Hash)។ សូមចម្លង ឬផ្ញើទៅកាន់បុគ្គលិកឥឡូវនេះ។
+                </span>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setResetPinResult(null);
+                setCopiedPin(false);
+              }}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition"
+            >
+              យល់ព្រម
+            </button>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 import { dispatchTelegramNotification } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -79,10 +80,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const expectedPin = employee.pin || "1234";
+    const currentPin = employee.pin || "1234";
     const enteredPin = (pin || "").trim();
 
-    if (!enteredPin || enteredPin !== expectedPin) {
+    let isPinValid = false;
+    if (enteredPin) {
+      if (currentPin.startsWith("$2")) {
+        isPinValid = await bcrypt.compare(enteredPin, currentPin);
+      } else {
+        isPinValid = enteredPin === currentPin;
+      }
+    }
+
+    if (!isPinValid) {
       const attempts = (employee.pinFailedAttempts || 0) + 1;
       if (attempts >= 5) {
         const pinLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lockout
@@ -93,13 +103,40 @@ export async function POST(req: Request) {
             pinLockedUntil,
           },
         });
+
+        // Notify Admins via in-app bell notification
+        const adminUsers = await prisma.user.findMany({
+          where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, isActive: true },
+          select: { id: true },
+        });
+        for (const adm of adminUsers) {
+          await prisma.notification.create({
+            data: {
+              userId: adm.id,
+              title: "ការជូនដំណឹងសុវត្ថិភាព Check-in",
+              message: `បុគ្គលិក ${employee.code} (${employee.name}) ត្រូវបានចាក់សោ Check-in ១៥ នាទី ដោយសារវាយ PIN ខុសលើសពី ៥ ដង!`,
+              type: "WARNING",
+              link: "/setup/employees",
+            },
+          });
+        }
+
+        // Write Audit log
+        await prisma.auditLog.create({
+          data: {
+            action: "PIN_LOCKOUT",
+            entity: "Employee",
+            details: `បុគ្គលិក ${employee.code} (${employee.name}) ត្រូវបានចាក់សោ Check-in ១៥ នាទី ដោយសារ PIN ខុស ៥ ដង`,
+          },
+        });
+
         return NextResponse.json(
           {
             success: false,
             isLocked: true,
             remainingMinutes: 15,
             error:
-              "អ្នកបានវាយ PIN ខុសចំនួន ៥ ដង! គណនីត្រូវបានចាក់សោសុវត្ថិភាពរយៈពេល ១៥ នាទី។ សូមទាក់ទង Admin ឬរង់ចាំមុននឹងសាកល្បងម្តងទៀត។",
+              "អ្នកបានវាយ PIN ខុសចំនួន ៥ ដង! គណនីត្រូវបានចាក់សោសុវត្ថិភាពរយៈពេល ១៥ នាទី។ ប្រព័ន្ធបានជូនដំណឹងទៅកាន់ Admin រួចរាល់។",
           },
           { status: 403 }
         );
@@ -117,6 +154,19 @@ export async function POST(req: Request) {
           { status: 401 }
         );
       }
+    }
+
+    // Check if employee must change PIN (e.g. first check-in after reset)
+    if (employee.mustChangePin) {
+      return NextResponse.json(
+        {
+          success: false,
+          mustChangePin: true,
+          employeeCode: employee.code,
+          error: "នេះជាការ Check-in លើកដំបូង ឬលេខ PIN ត្រូវបាន Reset។ សូមប្តូរលេខ PIN ថ្មីរបស់អ្នកជាមុនសិន!",
+        },
+        { status: 403 }
+      );
     }
 
     // PIN is correct - reset failed attempts and unlock if needed

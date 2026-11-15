@@ -18,6 +18,8 @@ import {
   Coffee,
   Check,
   Lock,
+  KeyRound,
+  X,
   CalendarDays,
   FileText,
 } from "lucide-react";
@@ -26,9 +28,19 @@ import { DateRangePicker } from "@/components/date-range-picker";
 
 export default function CheckinPage() {
   const [employeeCode, setEmployeeCode] = useState("EMP002"); // Default: ចាន់ ធីតា (Barista)
-  const [pin, setPin] = useState("1234"); // 4-digit PIN
+  const [pin, setPin] = useState(""); // 4-digit PIN (empty by default)
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [loadingEmp, setLoadingEmp] = useState(false);
+
+  // Self PIN change modal state
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [changePinCode, setChangePinCode] = useState("");
+  const [changePinOld, setChangePinOld] = useState("");
+  const [changePinNew, setChangePinNew] = useState("");
+  const [changePinConfirm, setChangePinConfirm] = useState("");
+  const [changingPin, setChangingPin] = useState(false);
+  const [changePinError, setChangePinError] = useState<string | null>(null);
+  const [changePinSuccess, setChangePinSuccess] = useState<string | null>(null);
 
   // GPS State
   const [coords, setCoords] = useState<{ lat: number; lng: number; acc: number } | null>(null);
@@ -266,7 +278,12 @@ export default function CheckinPage() {
       });
 
       const json = await res.json();
-      if (json.requireConfirmation) {
+      if (json.mustChangePin) {
+        setChangePinCode(employeeCode);
+        setChangePinOld(pin);
+        setShowChangePinModal(true);
+        setErrorMsg(json.error);
+      } else if (json.requireConfirmation) {
         setConfirmDayOffModal({
           message: json.error,
           dayName: json.dayName,
@@ -281,6 +298,54 @@ export default function CheckinPage() {
       setErrorMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ");
     }
     setSubmitting(false);
+  };
+
+  const handleChangePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePinError(null);
+    setChangePinSuccess(null);
+
+    if (changePinNew !== changePinConfirm) {
+      setChangePinError("លេខ PIN ថ្មីទាំងពីរមិនដូចគ្នាទេ");
+      return;
+    }
+    if (!/^\d{4}$/.test(changePinNew)) {
+      setChangePinError("លេខ PIN ត្រូវតែជាលេខ ៤ ខ្ទង់");
+      return;
+    }
+
+    setChangingPin(true);
+    try {
+      const res = await fetch("/api/attendance/change-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeCode: changePinCode,
+          oldPin: changePinOld,
+          newPin: changePinNew,
+          confirmPin: changePinConfirm,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChangePinSuccess(data.message);
+        setPin(changePinNew); // Update active PIN field
+        setErrorMsg(null);
+        setTimeout(() => {
+          setShowChangePinModal(false);
+          setChangePinOld("");
+          setChangePinNew("");
+          setChangePinConfirm("");
+          setChangePinSuccess(null);
+        }, 1500);
+      } else {
+        setChangePinError(data.error || "បរាជ័យក្នុងការប្តូរ PIN");
+      }
+    } catch {
+      setChangePinError("មានបញ្ហាបច្ចេកទេស");
+    } finally {
+      setChangingPin(false);
+    }
   };
 
   const branch = employeeData?.employee?.branch;
@@ -396,15 +461,23 @@ export default function CheckinPage() {
           )}
 
           {/* 4-Digit Security PIN */}
-          <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2">
+          <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
                 <span>លេខកូដសម្ងាត់ ៤ ខ្ទង់ (Security PIN)</span>
               </label>
-              <span className="text-[10px] text-amber-400/90 font-mono font-semibold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                PIN លំនាំដើម៖ 1234
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setChangePinCode(employeeCode);
+                  setChangePinOld(pin);
+                  setShowChangePinModal(true);
+                }}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition"
+              >
+                ប្តូរ PIN ថ្មី
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -412,11 +485,11 @@ export default function CheckinPage() {
                 maxLength={4}
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                placeholder="1234"
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl text-white font-mono font-bold text-center text-lg tracking-[0.4em] focus:outline-none"
+                placeholder="••••"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-amber-500 rounded-xl text-slate-900 dark:text-white font-mono font-bold text-center text-lg tracking-[0.4em] focus:outline-none transition"
               />
             </div>
-            <p className="text-[10px] text-slate-400 flex items-center gap-1">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
               <span>🛡️ ការពារការស្កេនជំនួសគ្នា — បញ្ចូល PIN ខុស ៥ ដង ប្រព័ន្ធនឹងចាក់សោ ១៥ នាទី</span>
             </p>
           </div>
@@ -925,6 +998,128 @@ export default function CheckinPage() {
                   យល់ព្រម Check-in
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Self Change PIN Modal (Step គ) */}
+        {showChangePinModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative text-left">
+              <button
+                type="button"
+                onClick={() => setShowChangePinModal(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/60 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    ប្តូរលេខសម្ងាត់ PIN ៤ ខ្ទង់
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    កំណត់ PIN ផ្ទាល់ខ្លួនសម្រាប់ Check-in
+                  </p>
+                </div>
+              </div>
+
+              {changePinError && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>{changePinError}</span>
+                </div>
+              )}
+
+              {changePinSuccess && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>{changePinSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePinSubmit} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    កូដបុគ្គលិក (Employee Code)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={changePinCode}
+                    onChange={(e) => setChangePinCode(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    លេខ PIN ចាស់ (Old PIN)
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    required
+                    value={changePinOld}
+                    onChange={(e) => setChangePinOld(e.target.value.replace(/\D/g, ""))}
+                    placeholder="••••"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-bold text-center tracking-widest focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    លេខ PIN ថ្មី ៤ ខ្ទង់ (New PIN)
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    required
+                    value={changePinNew}
+                    onChange={(e) => setChangePinNew(e.target.value.replace(/\D/g, ""))}
+                    placeholder="••••"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-bold text-center tracking-widest focus:outline-none focus:border-amber-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    ហាមប្រើ PIN ងាយៗដូចជា 1234, 0000, 1111...
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    បញ្ជាក់លេខ PIN ថ្មី (Confirm New PIN)
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    required
+                    value={changePinConfirm}
+                    onChange={(e) => setChangePinConfirm(e.target.value.replace(/\D/g, ""))}
+                    placeholder="••••"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-bold text-center tracking-widest focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePinModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition"
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changingPin}
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-md shadow-amber-600/20 transition disabled:opacity-50"
+                  >
+                    {changingPin ? "កំពុងរក្សាទុក..." : "រក្សាទុក PIN ថ្មី"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

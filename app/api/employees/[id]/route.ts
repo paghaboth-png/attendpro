@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -31,6 +32,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       hiddenInReport,
     } = body;
 
+    let hashedPin: string | undefined = undefined;
+    if (pin && typeof pin === "string" && pin.trim()) {
+      hashedPin = pin.startsWith("$2") ? pin : await bcrypt.hash(pin.trim(), 10);
+    }
+
     const employee = await prisma.employee.update({
       where: { id: params.id },
       data: {
@@ -56,7 +62,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
           otherBranchIds: Array.isArray(otherBranchIds) ? otherBranchIds.join(",") : (otherBranchIds || null),
         }),
         ...(employmentType !== undefined && { employmentType }),
-        ...(pin !== undefined && { pin }),
+        ...(hashedPin !== undefined && { pin: hashedPin, mustChangePin: false }),
         ...(resetLock && { pinFailedAttempts: 0, pinLockedUntil: null }),
         ...(baseSalary !== undefined && { baseSalary: parseFloat(baseSalary) }),
         ...(salaryType !== undefined && { salaryType }),
