@@ -65,6 +65,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check if store requires QR scan for check-in
+    const qrReqSetting = await prisma.setting.findUnique({
+      where: { key: "require_qr_checkin" },
+    });
+    if (qrReqSetting?.value === "true") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ហាងនេះតម្រូវឱ្យស្កេន QR Code នៅហាងទើបអាច Check-in បាន! សូមស្កេន QR Code ដែលបានបិទនៅហាង។",
+        },
+        { status: 403 }
+      );
+    }
+
     // 2. Security PIN & Rate Limiting Check
     const nowTime = new Date();
     if (employee.pinLockedUntil && nowTime < new Date(employee.pinLockedUntil)) {

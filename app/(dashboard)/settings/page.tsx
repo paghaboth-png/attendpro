@@ -28,6 +28,7 @@ import {
   Upload,
   Trash2,
   RefreshCw,
+  QrCode,
 } from "lucide-react";
 import { compressLogoImage } from "@/lib/image-utils";
 
@@ -62,6 +63,9 @@ export default function SettingsPage() {
   const [defaultRadius, setDefaultRadius] = useState(100);
   const [graceMinutes, setGraceMinutes] = useState(15);
   const [defaultLanguage, setDefaultLanguage] = useState("km");
+  const [requireQrCheckin, setRequireQrCheckin] = useState(false);
+  const [enableDynamicQr, setEnableDynamicQr] = useState(false);
+  const [qrDoubleScanDelayMinutes, setQrDoubleScanDelayMinutes] = useState(5);
 
   // Payroll Settings (for 8B)
   const [latePenaltyType, setLatePenaltyType] = useState("FIXED");
@@ -163,6 +167,9 @@ export default function SettingsPage() {
           setDefaultRadius(d.defaultRadius || 100);
           setGraceMinutes(d.graceMinutes || 15);
           setDefaultLanguage(d.defaultLanguage || "km");
+          setRequireQrCheckin(Boolean(d.requireQrCheckin));
+          setEnableDynamicQr(Boolean(d.enableDynamicQr));
+          setQrDoubleScanDelayMinutes(d.qrDoubleScanDelayMinutes ?? 5);
 
           setLatePenaltyType(d.latePenaltyType || "FIXED");
           setLatePenaltyAmount(d.latePenaltyAmount || 1.0);
@@ -291,6 +298,9 @@ export default function SettingsPage() {
           defaultRadius,
           graceMinutes,
           defaultLanguage,
+          requireQrCheckin,
+          enableDynamicQr,
+          qrDoubleScanDelayMinutes,
           latePenaltyType,
           latePenaltyAmount,
           absentPenaltyRate,
@@ -679,12 +689,96 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Grace Period, Radius, Language */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            {/* Toggle: Require QR Check-in */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-bold text-white">
+                    តម្រូវឱ្យស្កេន QR ទើប Check-in បាន (Require QR Scan)
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      requireQrCheckin
+                        ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                    }`}
+                  >
+                    {requireQrCheckin ? "បើក (ON)" : "បិទ (OFF - លំនាំដើម)"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {requireQrCheckin
+                    ? "បុគ្គលិកត្រូវតែស្កេន QR Code នៅហាងទើបអាច Check-in / Out បាន (រារាំងការចូលចុចតាម /checkin ធម្មតា)"
+                    : "អនុញ្ញាតឱ្យបុគ្គលិកអាច Check-in តាមទំព័រ /checkin ធម្មតាបាន (Fallback ពេលកាមេរ៉ាខូច)"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={requireQrCheckin}
+                onClick={() => setRequireQrCheckin(!requireQrCheckin)}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  requireQrCheckin ? "bg-cyan-600" : "bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    requireQrCheckin ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Toggle: Dynamic QR */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <RotateCw className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white">
+                    ជម្រើស QR ថាមវន្ត (Dynamic QR Display)
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      enableDynamicQr
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                    }`}
+                  >
+                    {enableDynamicQr ? "បើក (ON)" : "បិទ (OFF - លំនាំដើម)"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {enableDynamicQr
+                    ? "QR Code លើអេក្រង់ Tablet/TV សាខា (/display/[branchId]) នឹងប្តូរលេខកូដរៀងរាល់ ៣០ វិនាទី ការពារការថតរូប QR ទុកស្កេន"
+                    : "ប្រើ QR ថេរ (Static QR) ងាយស្រួលបោះពុម្ពបិទជញ្ជាំងហាង"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enableDynamicQr}
+                onClick={() => setEnableDynamicQr(!enableDynamicQr)}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  enableDynamicQr ? "bg-amber-600" : "bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    enableDynamicQr ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Grace Period, Radius, QR Cooldown, Language */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ម៉ោងអនុគ្រោះយឺត (Grace Period)</span>
+                  <span>ម៉ោងអនុគ្រោះយឺត</span>
                 </label>
                 <div className="relative">
                   <input
@@ -700,14 +794,14 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  យឺតក្រោម {graceMinutes} នាទី នៅតែរាប់ជា GOOD
+                  យឺតក្រោម {graceMinutes} នាទី នៅតែ GOOD
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>កាំរង្វង់លំនាំដើម (Radius)</span>
+                  <span>កាំរង្វង់លំនាំដើម</span>
                 </label>
                 <div className="relative">
                   <input
@@ -729,15 +823,38 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>ចន្លោះស្កេន In/Out</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={qrDoubleScanDelayMinutes}
+                    onChange={(e) => setQrDoubleScanDelayMinutes(parseInt(e.target.value) || 5)}
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <span className="absolute right-3.5 top-2.5 text-xs text-slate-500">
+                    នាទី
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Cooldown រវាង Check-in & Out
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-blue-400" />
-                  <span>ភាសាលំនាំដើម (Default Language)</span>
+                  <span>ភាសាលំនាំដើម</span>
                 </label>
                 <select
                   value={defaultLanguage}
                   onChange={(e) => setDefaultLanguage(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-blue-500"
                 >
-                  <option value="km">🇰🇭 ភាសាខ្មែរ (Khmer - លំនាំដើម)</option>
+                  <option value="km">🇰🇭 ភាសាខ្មែរ (Khmer)</option>
                   <option value="en">🇬🇧 English</option>
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1">

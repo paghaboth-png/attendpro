@@ -123,8 +123,9 @@ export default function CheckinPage() {
     setReqSubmitting(false);
   };
 
-  // System Settings State (Selfie Requirement)
+  // System Settings State (Selfie & QR Requirement)
   const [requireSelfie, setRequireSelfie] = useState(false);
+  const [requireQrCheckin, setRequireQrCheckin] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -132,6 +133,7 @@ export default function CheckinPage() {
       .then((json) => {
         if (json.success && json.data) {
           setRequireSelfie(Boolean(json.data.requireSelfie));
+          setRequireQrCheckin(Boolean(json.data.requireQrCheckin));
         }
       })
       .catch(() => {});
@@ -663,6 +665,22 @@ export default function CheckinPage() {
                   <div className="text-[11px] text-slate-400 mt-0.5">
                     មិនចាំបាច់ថតរូប Selfie — ផ្ទៀងផ្ទាត់ទីតាំង GPS រួចចុច Check-in បានភ្លាមៗ
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if Store requires QR check-in */}
+            {requireQrCheckin && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-amber-200 mb-0.5">
+                    ហាងនេះតម្រូវឱ្យស្កេន QR Code នៅហាង
+                  </div>
+                  <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                    ប្រព័ន្ធបានកំណត់ឱ្យ Check-in តាមរយៈការស្កេន QR Code ដែលបានបិទនៅហាងផ្ទាល់។
+                    ទំព័រនេះរក្សាទុកជា Fallback សម្រាប់ករណីកាមេរ៉ាទូរស័ព្ទខូច ឬមានការអនុញ្ញាតពិសេស។
+                  </p>
                 </div>
               </div>
             )}
