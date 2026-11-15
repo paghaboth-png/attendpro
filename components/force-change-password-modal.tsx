@@ -52,6 +52,7 @@ export function ForceChangePasswordModal() {
         body: JSON.stringify({
           newPassword,
           confirmPassword,
+          forceChange: true,
         }),
       });
 

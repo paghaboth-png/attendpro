@@ -51,8 +51,19 @@ export async function POST(req: Request) {
       );
     }
 
+    const isForcedMode =
+      user.mustChangePassword ||
+      (session?.user as any)?.mustChangePassword === true ||
+      body.forceChange === true;
+
     // If user is not in forced password change mode, verify old password
-    if (!user.mustChangePassword && parsed.data.oldPassword) {
+    if (!isForcedMode) {
+      if (!parsed.data.oldPassword) {
+        return NextResponse.json(
+          { success: false, error: "សូមបញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន" },
+          { status: 400 }
+        );
+      }
       const isMatch = await bcrypt.compare(
         parsed.data.oldPassword,
         user.passwordHash
@@ -63,11 +74,6 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-    } else if (!user.mustChangePassword && !parsed.data.oldPassword) {
-      return NextResponse.json(
-        { success: false, error: "សូមបញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន" },
-        { status: 400 }
-      );
     }
 
     const newHash = await bcrypt.hash(parsed.data.newPassword, 10);
