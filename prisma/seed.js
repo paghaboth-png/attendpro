@@ -21,7 +21,7 @@ async function main() {
   });
   console.log('✅ Company created:', company.name);
 
-  // 2. Create 2 Branches
+  // 2. Create Primary Branch: THE ONE COFFEE (ស្វាយរៀង)
   const branch1 = await prisma.branch.upsert({
     where: { id: 'branch-toul-kork' },
     update: {
@@ -44,21 +44,11 @@ async function main() {
     },
   });
 
-  const branch2 = await prisma.branch.upsert({
+  // Ensure branch-bkk1 is deleted if it exists
+  await prisma.branch.deleteMany({
     where: { id: 'branch-bkk1' },
-    update: {},
-    create: {
-      id: 'branch-bkk1',
-      companyId: company.id,
-      name: 'សាខាបឹងកេងកង (BKK1)',
-      lat: 11.5516,
-      lng: 104.9272,
-      radiusMeters: 100,
-      address: 'ផ្លូវ ៥៧ កែងផ្លូវ ៣០២ សង្កាត់បឹងកេងកង១ ខណ្ឌចំការមន រាជធានីភ្នំពេញ',
-      isActive: true,
-    },
   });
-  console.log('✅ 2 Branches created:', branch1.name, ',', branch2.name);
+  console.log('✅ Branch created:', branch1.name);
 
   // 3. Create 3 Departments
   const dept1 = await prisma.department.upsert({
@@ -293,7 +283,7 @@ async function main() {
       code: 'EMP006',
       name: 'រ័ត្ន ចិន្តា',
       phone: '012999007',
-      branchId: branch2.id,
+      branchId: branch1.id,
       departmentId: dept3.id,
       positionId: posManager.id,
       shiftId: shiftMorning.id,
@@ -302,7 +292,7 @@ async function main() {
       code: 'EMP007',
       name: 'ពេជ្រ រស្មី',
       phone: '012999008',
-      branchId: branch2.id,
+      branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posBarista.id,
       shiftId: shiftMorning.id,
@@ -311,7 +301,7 @@ async function main() {
       code: 'EMP008',
       name: 'ឡុង វាសនា',
       phone: '012999009',
-      branchId: branch2.id,
+      branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posCashier.id,
       shiftId: shiftMorning.id,
@@ -320,7 +310,7 @@ async function main() {
       code: 'EMP009',
       name: 'ឈាង សុភាព',
       phone: '012999010',
-      branchId: branch2.id,
+      branchId: branch1.id,
       departmentId: dept2.id,
       positionId: posBarista.id,
       shiftId: shiftAfternoon.id,
@@ -329,7 +319,7 @@ async function main() {
       code: 'EMP010',
       name: 'វ៉ាន់ ស្រីនាង',
       phone: '012999011',
-      branchId: branch2.id,
+      branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posCashier.id,
       shiftId: shiftAfternoon.id,

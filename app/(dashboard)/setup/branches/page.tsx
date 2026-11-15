@@ -115,13 +115,13 @@ export default function BranchesPage() {
     } catch {}
   };
 
-  // Quick preset locations in Cambodia (Svay Rieng & Phnom Penh)
+  // Quick preset locations in Cambodia (Svay Rieng & nearby)
   const presets = [
     { label: "⭐ THE ONE COFFEE (ស្វាយរៀង)", lat: "11.0917049", lng: "105.7917625" },
-    { label: "ក្រុងស្វាយរៀង (Svay Rieng Central)", lat: "11.0878", lng: "105.7993" },
+    { label: "ផ្សារវាលយន្ត (Veal Yorn)", lat: "11.0895", lng: "105.7942" },
+    { label: "រង្វង់មូលព្រាបស (Svay Rieng)", lat: "11.0864", lng: "105.8011" },
     { label: "ក្រុងបាវិត (Bavet)", lat: "11.0825", lng: "106.1432" },
-    { label: "បឹងកេងកង (BKK1)", lat: "11.5516", lng: "104.9272" },
-    { label: "ទួលគោក (Toul Kork)", lat: "11.5724", lng: "104.8964" },
+    { label: "រាជធានីភ្នំពេញ (Phnom Penh)", lat: "11.5564", lng: "104.9282" },
   ];
 
   return (

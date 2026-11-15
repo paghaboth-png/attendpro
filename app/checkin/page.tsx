@@ -202,7 +202,7 @@ export default function CheckinPage() {
   const sampleCodes = [
     { code: "EMP002", name: "ចាន់ ធីតា (Barista)", branch: "ស្វាយរៀង" },
     { code: "EMP001", name: "សុខ វិសាល (Manager)", branch: "ស្វាយរៀង" },
-    { code: "EMP007", name: "ពេជ្រ រស្មី (Barista)", branch: "BKK1" },
+    { code: "EMP007", name: "ពេជ្រ រស្មី (Barista)", branch: "ស្វាយរៀង" },
   ];
 
   return (
