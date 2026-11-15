@@ -26,8 +26,8 @@ export default function BranchesPage() {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
-    lat: "11.5564",
-    lng: "104.9282",
+    lat: "11.0917049",
+    lng: "105.7917625",
     radiusMeters: "100",
     isActive: true,
   });
@@ -53,9 +53,9 @@ export default function BranchesPage() {
     setEditingBranch(null);
     setFormData({
       name: "",
-      address: "",
-      lat: "11.5564",
-      lng: "104.9282",
+      address: "ក្រុងស្វាយរៀង ខេត្តស្វាយរៀង",
+      lat: "11.0917049",
+      lng: "105.7917625",
       radiusMeters: "100",
       isActive: true,
     });
@@ -115,13 +115,13 @@ export default function BranchesPage() {
     } catch {}
   };
 
-  // Quick preset locations in Phnom Penh
+  // Quick preset locations in Cambodia (Svay Rieng & Phnom Penh)
   const presets = [
-    { label: "ទួលគោក (Toul Kork)", lat: "11.5724", lng: "104.8964" },
+    { label: "⭐ THE ONE COFFEE (ស្វាយរៀង)", lat: "11.0917049", lng: "105.7917625" },
+    { label: "ក្រុងស្វាយរៀង (Svay Rieng Central)", lat: "11.0878", lng: "105.7993" },
+    { label: "ក្រុងបាវិត (Bavet)", lat: "11.0825", lng: "106.1432" },
     { label: "បឹងកេងកង (BKK1)", lat: "11.5516", lng: "104.9272" },
-    { label: "ដូនពេញ (Daun Penh)", lat: "11.5684", lng: "104.9255" },
-    { label: "ច្បារអំពៅ (Chbar Ampov)", lat: "11.5304", lng: "104.9542" },
-    { label: "ស្ទឹងមានជ័យ (Steung Mean Chey)", lat: "11.5365", lng: "104.8821" },
+    { label: "ទួលគោក (Toul Kork)", lat: "11.5724", lng: "104.8964" },
   ];
 
   return (
@@ -295,7 +295,7 @@ export default function BranchesPage() {
               {/* Quick Coordinates Presets */}
               <div>
                 <label className="block text-slate-400 font-medium mb-1.5">
-                  ជ្រើសរើសតំបន់គំរូក្នុងភ្នំពេញ (Quick Presets)៖
+                  ជ្រើសរើសតំបន់គំរូ (Quick Location Presets)៖
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {presets.map((p) => (
@@ -344,6 +344,26 @@ export default function BranchesPage() {
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:outline-none focus:border-blue-500"
                   />
                 </div>
+              </div>
+
+              {/* Map Preview */}
+              <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
+                <div className="bg-slate-900 px-3 py-1.5 border-b border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>📍 ផែនទីទីតាំងសាខា (OpenStreetMap Preview)</span>
+                  <a
+                    href={`https://www.google.com/maps?q=${formData.lat},${formData.lng}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    បើកមើលលើ Google Maps ↗
+                  </a>
+                </div>
+                <iframe
+                  title="Branch Location Map"
+                  className="w-full h-36 border-0"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(formData.lng || "105.7917625") - 0.006}%2C${parseFloat(formData.lat || "11.0917049") - 0.006}%2C${parseFloat(formData.lng || "105.7917625") + 0.006}%2C${parseFloat(formData.lat || "11.0917049") + 0.006}&layer=mapnik&marker=${formData.lat || "11.0917049"}%2C${formData.lng || "105.7917625"}`}
+                />
               </div>
 
               {/* Radius */}

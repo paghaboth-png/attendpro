@@ -33,8 +33,8 @@ export async function POST(req: Request) {
       data: {
         companyId: company.id,
         name,
-        lat: parseFloat(lat) || 11.5564,
-        lng: parseFloat(lng) || 104.9282,
+        lat: parseFloat(lat) || 11.0917049,
+        lng: parseFloat(lng) || 105.7917625,
         radiusMeters: parseInt(radiusMeters) || 100,
         address: address || "",
         isActive: isActive !== undefined ? Boolean(isActive) : true,

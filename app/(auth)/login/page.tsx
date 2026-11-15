@@ -202,7 +202,7 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-white group-hover:text-emerald-400 transition">
-                      Branch Manager (មេការទួលគោក)
+                      Branch Manager (មេការស្វាយរៀង)
                     </div>
                     <div className="text-[11px] text-slate-400 font-mono">
                       manager@demo.com

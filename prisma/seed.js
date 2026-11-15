@@ -24,15 +24,22 @@ async function main() {
   // 2. Create 2 Branches
   const branch1 = await prisma.branch.upsert({
     where: { id: 'branch-toul-kork' },
-    update: {},
+    update: {
+      name: 'THE ONE COFFEE (ស្វាយរៀង)',
+      lat: 11.0917049,
+      lng: 105.7917625,
+      radiusMeters: 100,
+      address: 'ផ្លូវលេខ ០៨ ភូមិវាលយន្ត សង្កាត់ស្វាយរៀង ក្រុងស្វាយរៀង ខេត្តស្វាយរៀង',
+      isActive: true,
+    },
     create: {
       id: 'branch-toul-kork',
       companyId: company.id,
-      name: 'សាខាកណ្តាល (ទួលគោក)',
-      lat: 11.5724,
-      lng: 104.8964,
+      name: 'THE ONE COFFEE (ស្វាយរៀង)',
+      lat: 11.0917049,
+      lng: 105.7917625,
       radiusMeters: 100,
-      address: 'ផ្លូវ ៣១៥ សង្កាត់បឹងកក់២ ខណ្ឌទួលគោក រាជធានីភ្នំពេញ',
+      address: 'ផ្លូវលេខ ០៨ ភូមិវាលយន្ត សង្កាត់ស្វាយរៀង ក្រុងស្វាយរៀង ខេត្តស្វាយរៀង',
       isActive: true,
     },
   });

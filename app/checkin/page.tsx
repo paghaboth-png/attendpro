@@ -161,8 +161,8 @@ export default function CheckinPage() {
 
     // If location is simulated or employee is within radius:
     // If user's device is in test environment without physical branch GPS, we use current coords or branch coords fallback for testing!
-    const effectiveLat = coords?.lat ?? (employeeData?.employee?.branch?.lat || 11.5724);
-    const effectiveLng = coords?.lng ?? (employeeData?.employee?.branch?.lng || 104.8964);
+    const effectiveLat = coords?.lat ?? (employeeData?.employee?.branch?.lat || 11.0917049);
+    const effectiveLng = coords?.lng ?? (employeeData?.employee?.branch?.lng || 105.7917625);
     const effectiveAcc = coords?.acc ?? 10;
 
     setSubmitting(true);
@@ -200,8 +200,8 @@ export default function CheckinPage() {
   const isCheckedOut = Boolean(todayAtt?.checkOutAt);
 
   const sampleCodes = [
-    { code: "EMP002", name: "ចាន់ ធីតា (Barista)", branch: "ទួលគោក" },
-    { code: "EMP001", name: "សុខ វិសាល (Manager)", branch: "ទួលគោក" },
+    { code: "EMP002", name: "ចាន់ ធីតា (Barista)", branch: "ស្វាយរៀង" },
+    { code: "EMP001", name: "សុខ វិសាល (Manager)", branch: "ស្វាយរៀង" },
     { code: "EMP007", name: "ពេជ្រ រស្មី (Barista)", branch: "BKK1" },
   ];
 
