@@ -30,6 +30,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       salaryType,
       isActive,
       hiddenInReport,
+      linkedUserId,
+      userId,
     } = body;
 
     let hashedPin: string | undefined = undefined;
@@ -68,6 +70,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         ...(salaryType !== undefined && { salaryType }),
         ...(isActive !== undefined && { isActive: Boolean(isActive) }),
         ...(hiddenInReport !== undefined && { hiddenInReport: Boolean(hiddenInReport) }),
+        ...((userId !== undefined || linkedUserId !== undefined) && {
+          userId: userId || linkedUserId || null,
+        }),
       },
     });
 

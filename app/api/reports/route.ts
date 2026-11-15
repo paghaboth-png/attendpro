@@ -40,7 +40,11 @@ export async function GET(req: Request) {
 
     const empWhere: any = { isActive: true };
     if (branchId !== "all") empWhere.branchId = branchId;
-    if (employeeId !== "all") empWhere.id = employeeId;
+    if (employeeId !== "all") {
+      empWhere.id = employeeId;
+    } else {
+      empWhere.hiddenInReport = false;
+    }
 
     const [employees, attendances, leaves, overtimes, branches] =
       await Promise.all([

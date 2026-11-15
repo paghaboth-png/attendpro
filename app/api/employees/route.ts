@@ -98,11 +98,13 @@ export async function POST(req: Request) {
     // Check duplicate phone or email
     const normPhone = phone ? normalizePhoneNumber(phone) : null;
     const normEmail = email ? email.trim().toLowerCase() : null;
+    const linkedUserId = body.linkedUserId || null;
 
     if (normPhone) {
       const dupPhoneUser = await prisma.user.findFirst({ where: { phone: normPhone } });
       const dupPhoneEmp = await prisma.employee.findFirst({ where: { phone: normPhone } });
-      if (dupPhoneUser || dupPhoneEmp) {
+      // If linking existing user, ignore if user matches linkedUserId
+      if ((dupPhoneUser && dupPhoneUser.id !== linkedUserId) || dupPhoneEmp) {
         return NextResponse.json(
           { success: false, error: "លេខទូរស័ព្ទនេះមានក្នុងប្រព័ន្ធរួចហើយ សូមពិនិត្យឡើងវិញ" },
           { status: 400 }
@@ -112,7 +114,7 @@ export async function POST(req: Request) {
 
     if (normEmail) {
       const dupEmail = await prisma.user.findFirst({ where: { email: normEmail } });
-      if (dupEmail) {
+      if (dupEmail && dupEmail.id !== linkedUserId) {
         return NextResponse.json(
           { success: false, error: "អ៊ីមែលនេះមានក្នុងប្រព័ន្ធរួចហើយ សូមពិនិត្យឡើងវិញ" },
           { status: 400 }
@@ -128,11 +130,11 @@ export async function POST(req: Request) {
       targetRole = "EMPLOYEE";
     }
 
-    let userId: string | null = null;
+    let userId: string | null = linkedUserId;
     let createdTempPassword: string | null = null;
 
-    // Create login account if enabled (or email/password provided)
-    const shouldCreateLogin = body.createLoginAccount || (email && password);
+    // Create login account if enabled and not already linking an existing user
+    const shouldCreateLogin = !linkedUserId && (body.createLoginAccount || (email && password));
     if (shouldCreateLogin) {
       if (!normPhone && !normEmail) {
         return NextResponse.json(

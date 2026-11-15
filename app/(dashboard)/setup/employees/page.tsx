@@ -107,11 +107,14 @@ export default function EmployeesPage() {
     email: "",
     password: "",
     createLoginAccount: false,
+    linkExistingAdmin: false,
+    linkedUserId: "",
     role: "EMPLOYEE",
     isActive: true,
     hiddenInReport: false,
   });
 
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const { data: session } = useSession();
   const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
 
@@ -281,6 +284,9 @@ export default function EmployeesPage() {
         setDepartments(data.data.departments);
         setPositions(data.data.positions);
         setShifts(data.data.shifts);
+        if (data.data.adminUsers) {
+          setAdminUsers(data.data.adminUsers);
+        }
       }
     } catch {}
     setLoading(false);
@@ -323,6 +329,8 @@ export default function EmployeesPage() {
       email: "",
       password: "",
       createLoginAccount: false,
+      linkExistingAdmin: false,
+      linkedUserId: "",
       role: "EMPLOYEE",
       isActive: true,
       hiddenInReport: false,
@@ -368,6 +376,8 @@ export default function EmployeesPage() {
       email: emp.user?.email || "",
       password: "",
       createLoginAccount: !!emp.user,
+      linkExistingAdmin: !!emp.user && ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(emp.user.role),
+      linkedUserId: emp.userId || "",
       role: emp.user?.role || "EMPLOYEE",
       isActive: emp.isActive,
       hiddenInReport: emp.hiddenInReport,
@@ -1578,105 +1588,169 @@ export default function EmployeesPage() {
 
                   {formData.createLoginAccount && (
                     <div className="pt-2 border-t border-slate-800 space-y-2.5">
-                      {/* Username Hint */}
-                      <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-[11px] text-slate-300 space-y-1">
-                        <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>Username ចូលប្រើ៖</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                          ប្រព័ន្ធនឹងយក{" "}
-                          <strong className="text-white">
-                            {formData.phone ? formData.phone : formData.email ? formData.email : formData.code}
-                          </strong>{" "}
-                          (លេខទូរស័ព្ទ អ៊ីមែល ឬកូដបុគ្គលិក) ជា Username សម្រាប់ចូល។
-                        </p>
+                      {/* Selection: Link Existing Admin vs Create New Login */}
+                      <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 flex items-center gap-4 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-medium">
+                          <input
+                            type="radio"
+                            name="loginAccountType"
+                            checked={formData.linkExistingAdmin}
+                            onChange={() => setFormData((prev) => ({ ...prev, linkExistingAdmin: true }))}
+                            className="text-blue-600 focus:ring-0"
+                          />
+                          <span>ភ្ជាប់គណនី Admin / Super Admin</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-medium">
+                          <input
+                            type="radio"
+                            name="loginAccountType"
+                            checked={!formData.linkExistingAdmin}
+                            onChange={() => setFormData((prev) => ({ ...prev, linkExistingAdmin: false, linkedUserId: "" }))}
+                            className="text-blue-600 focus:ring-0"
+                          />
+                          <span>បង្កើត Login ថ្មី</span>
+                        </label>
                       </div>
 
-                      {/* Role and Email */}
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                            អ៊ីមែល (បើមាន)
-                          </label>
-                          <input
-                            type="email"
-                            placeholder="ឧ. som.chann@attendpro.local"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                            តួនាទីគណនី (Role)
+                      {formData.linkExistingAdmin ? (
+                        <div className="space-y-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                          <label className="block text-[11px] font-medium text-slate-300">
+                            ជ្រើសរើសគណនី Admin / Super Admin ដែលត្រូវ Check-in *
                           </label>
                           <select
-                            value={formData.role}
-                            disabled={!isSuperAdmin}
-                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                            className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                          >
-                            <option value="EMPLOYEE">បុគ្គលិក (Employee)</option>
-                            <option value="MANAGER">ប្រធានផ្នែក (Manager)</option>
-                            <option value="ADMIN">អ្នកគ្រប់គ្រង (Admin)</option>
-                          </select>
-                          {!isSuperAdmin && (
-                            <span className="text-[9px] text-slate-500 block mt-0.5">
-                              * មានតែ Super Admin ទើបអាចកំណត់ Manager/Admin បាន
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Password with Random Generator and Copy */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[11px] font-medium text-slate-300">
-                            ពាក្យសម្ងាត់ (Password យ៉ាងតិច ៨ តួ) *
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
+                            value={formData.linkedUserId}
+                            onChange={(e) => {
+                              const uId = e.target.value;
+                              const u = adminUsers.find((x) => x.id === uId);
                               setFormData((prev) => ({
                                 ...prev,
-                                password: generateReadableTempPassword(),
-                              }))
-                            }
-                            className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
+                                linkedUserId: uId,
+                                ...(u && {
+                                  name: prev.name || u.name,
+                                  phone: prev.phone || u.phone || "",
+                                  email: prev.email || u.email || "",
+                                  role: u.role,
+                                  hiddenInReport: true,
+                                }),
+                              }));
+                            }}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
                           >
-                            <Sparkles className="w-3 h-3 text-blue-400" />
-                            <span>បង្កើតចៃដន្យ (Random)</span>
-                          </button>
+                            <option value="">-- ជ្រើសរើសគណនី --</option>
+                            {adminUsers.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name} ({u.phone || u.email || "គ្មានលេខ"}) - {u.role}
+                                {u.employee ? ` [បានភ្ជាប់ជាមួយ ${u.employee.code}]` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-[10px] text-emerald-400 leading-relaxed">
+                            ✓ គណនី Login នេះជាបុគ្គលិកដែលត្រូវ Check-in ដោយមានវេន ម៉ោង និងថ្ងៃធ្វើការកំណត់ដូចបុគ្គលិកដទៃ។
+                          </p>
                         </div>
-                        <div className="relative flex items-center">
-                          <input
-                            type="text"
-                            required={formData.createLoginAccount && !editingEmp?.user}
-                            placeholder="យ៉ាងតិច ៨ តួ (ឧ. Attend#9k2m)"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full pl-3 pr-20 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-blue-500"
-                          />
-                          {formData.password && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(formData.password);
-                                alert("បានចម្លងពាក្យសម្ងាត់");
-                              }}
-                              className="absolute right-1 px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-[10px] font-semibold flex items-center gap-1 transition"
-                            >
-                              <Copy className="w-2.5 h-2.5" />
-                              <span>ចម្លង</span>
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង។
-                        </p>
-                      </div>
+                      ) : (
+                        <>
+                          {/* Username Hint */}
+                          <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-[11px] text-slate-300 space-y-1">
+                            <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Username ចូលប្រើ៖</span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 leading-relaxed">
+                              ប្រព័ន្ធនឹងយក{" "}
+                              <strong className="text-white">
+                                {formData.phone ? formData.phone : formData.email ? formData.email : formData.code}
+                              </strong>{" "}
+                              (លេខទូរស័ព្ទ អ៊ីមែល ឬកូដបុគ្គលិក) ជា Username សម្រាប់ចូល។
+                            </p>
+                          </div>
+
+                          {/* Role and Email */}
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                                អ៊ីមែល (បើមាន)
+                              </label>
+                              <input
+                                type="email"
+                                placeholder="ឧ. som.chann@attendpro.local"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                                តួនាទីគណនី (Role)
+                              </label>
+                              <select
+                                value={formData.role}
+                                disabled={!isSuperAdmin}
+                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                              >
+                                <option value="EMPLOYEE">បុគ្គលិក (Employee)</option>
+                                <option value="MANAGER">ប្រធានផ្នែក (Manager)</option>
+                                <option value="ADMIN">អ្នកគ្រប់គ្រង (Admin)</option>
+                              </select>
+                              {!isSuperAdmin && (
+                                <span className="text-[9px] text-slate-500 block mt-0.5">
+                                  * មានតែ Super Admin ទើបអាចកំណត់ Manager/Admin បាន
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Password with Random Generator and Copy */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-medium text-slate-300">
+                                ពាក្យសម្ងាត់ (Password យ៉ាងតិច ៨ តួ) *
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    password: generateReadableTempPassword(),
+                                  }))
+                                }
+                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
+                              >
+                                <Sparkles className="w-3 h-3 text-blue-400" />
+                                <span>បង្កើតចៃដន្យ (Random)</span>
+                              </button>
+                            </div>
+                            <div className="relative flex items-center">
+                              <input
+                                type="text"
+                                required={formData.createLoginAccount && !formData.linkExistingAdmin && !editingEmp?.user}
+                                placeholder="យ៉ាងតិច ៨ តួ (ឧ. Attend#9k2m)"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full pl-3 pr-20 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                              />
+                              {formData.password && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(formData.password);
+                                    alert("បានចម្លងពាក្យសម្ងាត់");
+                                  }}
+                                  className="absolute right-1 px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-[10px] font-semibold flex items-center gap-1 transition"
+                                >
+                                  <Copy className="w-2.5 h-2.5" />
+                                  <span>ចម្លង</span>
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង។
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

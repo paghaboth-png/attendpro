@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [branches, departments, positions, shifts, employees] = await Promise.all([
+    const [branches, departments, positions, shifts, employees, adminUsers] = await Promise.all([
       prisma.branch.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.department.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.position.findMany({ orderBy: { createdAt: "asc" } }),
@@ -20,10 +20,22 @@ export async function GET() {
           position: true,
           shift: true,
           user: {
-            select: { email: true, role: true },
+            select: { email: true, phone: true, role: true },
           },
         },
         orderBy: { code: "asc" },
+      }),
+      prisma.user.findMany({
+        where: { role: { in: ["SUPER_ADMIN", "ADMIN", "MANAGER"] } },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          role: true,
+          employee: { select: { id: true, code: true } },
+        },
+        orderBy: { createdAt: "asc" },
       }),
     ]);
 
@@ -35,6 +47,7 @@ export async function GET() {
         positions,
         shifts,
         employees,
+        adminUsers,
       },
     });
   } catch (error: any) {

@@ -19,6 +19,8 @@ import {
   HelpCircle,
   Smartphone,
   Check,
+  Sparkles,
+  RotateCw,
 } from "lucide-react";
 
 export default function ScanQrPage() {
@@ -54,6 +56,7 @@ export default function ScanQrPage() {
   const [pendingAction, setPendingAction] = useState<"CHECK_IN" | "CHECK_OUT" | "UPDATE_CHECKOUT">("CHECK_IN");
   const [submitting, setSubmitting] = useState(false);
   const [successResult, setSuccessResult] = useState<any>(null);
+  const [creatingProfile, setCreatingProfile] = useState(false);
 
   // 1. Fetch Branch Info from token
   const fetchBranchInfo = async () => {
@@ -419,6 +422,27 @@ export default function ScanQrPage() {
     );
   }
 
+  const handleCreateProfile = async () => {
+    setCreatingProfile(true);
+    try {
+      const res = await fetch("/api/scan/create-my-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchEmployeeStatus();
+      } else {
+        alert(data.error || "មិនអាចបង្កើតប្រវត្តិបុគ្គលិកបានឡើយ");
+      }
+    } catch {
+      alert("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ");
+    } finally {
+      setCreatingProfile(false);
+    }
+  };
+
   // -------------------------------------------------------------
   // RENDER: Standalone Admin (No Employee Record)
   // -------------------------------------------------------------
@@ -430,14 +454,30 @@ export default function ScanQrPage() {
             <UserCheck className="w-7 h-7" />
           </div>
           <h2 className="text-base font-bold text-slate-900">
-            គណនីគ្រប់គ្រង (Admin)
+            គណនីគ្រប់គ្រង ({empStatus.userRole || "Admin"})
           </h2>
           <p className="text-xs text-slate-600 leading-relaxed">
-            គណនីនេះមិនមែនជាបុគ្គលិកដែលត្រូវ Check-in ឡើយ (គ្មានកាលវិភាគការងារ)។
+            {empStatus.message || "គណនីនេះមិនមែនជាបុគ្គលិកដែលត្រូវ Check-in ឡើយ (គ្មានកាលវិភាគការងារ)។"}
           </p>
+
+          {empStatus.canCreateProfile && (
+            <button
+              onClick={handleCreateProfile}
+              disabled={creatingProfile}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {creatingProfile ? (
+                <RotateCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              <span>{creatingProfile ? "កំពុងបង្កើតប្រវត្តិបុគ្គលិក..." : "បង្កើតប្រវត្តិបុគ្គលិកសម្រាប់ខ្ញុំ"}</span>
+            </button>
+          )}
+
           <button
             onClick={() => router.push("/dashboard")}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition"
+            className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
           >
             ទៅកាន់ Dashboard
           </button>

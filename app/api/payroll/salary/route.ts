@@ -27,6 +27,7 @@ export async function GET(req: Request) {
     const whereClause: any = {
       companyId: company.id,
       isActive: true,
+      hiddenInReport: false,
     };
 
     if (branchId && branchId !== "all") {

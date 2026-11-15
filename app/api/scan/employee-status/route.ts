@@ -69,6 +69,9 @@ export async function GET(req: Request) {
         success: true,
         state: "NO_EMPLOYEE_RECORD",
         message: "គណនីនេះមិនមែនជាបុគ្គលិកដែលត្រូវ Check-in ឡើយ (គ្មានកាលវិភាគការងារ)",
+        canCreateProfile: ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(sessionUser.role),
+        userRole: sessionUser.role,
+        userName: sessionUser.name,
         branch: {
           id: branch.id,
           name: branch.name,

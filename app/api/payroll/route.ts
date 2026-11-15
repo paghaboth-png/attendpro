@@ -264,6 +264,8 @@ export async function POST(req: Request) {
       }
       if (Array.isArray(employeeIds) && employeeIds.length > 0) {
         empWhere.id = { in: employeeIds };
+      } else {
+        empWhere.hiddenInReport = false;
       }
 
       const targetEmployees = await prisma.employee.findMany({

@@ -118,6 +118,23 @@ export const authOptions: NextAuthOptions = {
         token.positionName = (user as any).positionName;
         token.phone = (user as any).phone;
       }
+
+      // If user has no employeeId yet in token, look up dynamically
+      if (token?.id && !token?.employeeId) {
+        try {
+          const emp = await prisma.employee.findUnique({
+            where: { userId: token.id as string },
+            include: { branch: true, position: true },
+          });
+          if (emp) {
+            token.employeeId = emp.id;
+            token.employeeCode = emp.code;
+            token.branchName = emp.branch?.name || "All Branches";
+            token.positionName = emp.position?.name || (token.role as string);
+          }
+        } catch {}
+      }
+
       return token;
     },
     async session({ session, token }) {
