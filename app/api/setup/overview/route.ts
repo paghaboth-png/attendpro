@@ -9,7 +9,10 @@ export async function GET() {
       prisma.branch.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.department.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.position.findMany({ orderBy: { createdAt: "asc" } }),
-      prisma.shift.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.shift.findMany({
+        include: { templates: { orderBy: { startTime: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      }),
       prisma.employee.findMany({
         include: {
           branch: true,

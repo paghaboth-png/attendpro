@@ -29,7 +29,11 @@ export async function GET() {
       { header: "ផ្នែកការងារ (Department)", key: "department", width: 28 },
       { header: "មុខតំណែង (Position)", key: "position", width: 26 },
       { header: "វេនធ្វើការ (Shift)", key: "shift", width: 28 },
-      { header: "ស្ថានភាព (Status)", key: "status", width: 14 },
+      { header: "ថ្ងៃធ្វើការ (Working Days)", key: "workingDays", width: 24 },
+      { header: "ម៉ោងធ្វើការ (Working Hours)", key: "workingHours", width: 22 },
+      { header: "ប្រភេទបុគ្គលិក (Type)", key: "employmentType", width: 20 },
+      { header: "ថ្ងៃចូលធ្វើការ (Join Date)", key: "joinDate", width: 18 },
+      { header: "ស្ថានភាព (Status)", key: "status", width: 16 },
     ];
 
     // Header styling
@@ -43,8 +47,39 @@ export async function GET() {
     headerRow.alignment = { vertical: "middle", horizontal: "center" };
     headerRow.height = 28;
 
+    const dayNameMap: Record<string, string> = {
+      "1": "ចន្ទ",
+      "2": "អង្គារ",
+      "3": "ពុធ",
+      "4": "ព្រហស្បតិ៍",
+      "5": "សុក្រ",
+      "6": "សៅរ៍",
+      "0": "អាទិត្យ",
+    };
+
+    const typeNameMap: Record<string, string> = {
+      FULL_TIME: "ពេញម៉ោង (Full-Time)",
+      PART_TIME: "ក្រៅម៉ោង (Part-Time)",
+      PROBATION: "សាកល្បង (Probation)",
+      CONTRACT: "កិច្ចសន្យា (Contract)",
+    };
+
     // Add rows
     employees.forEach((emp) => {
+      const days = (emp.workingDays || emp.shift?.workDays || "1,2,3,4,5")
+        .split(",")
+        .map((d) => dayNameMap[d.trim()] || d)
+        .join(", ");
+
+      const hours =
+        emp.shiftScheduleType === "CUSTOM" && emp.customStartTime && emp.customEndTime
+          ? `${emp.customStartTime} - ${emp.customEndTime}`
+          : `${emp.shift?.startTime || "07:00"} - ${emp.shift?.endTime || "16:00"}`;
+
+      const joinDateStr = emp.joinDate
+        ? new Date(emp.joinDate).toISOString().slice(0, 10)
+        : "-";
+
       worksheet.addRow({
         code: emp.code,
         name: emp.name,
@@ -53,6 +88,10 @@ export async function GET() {
         department: emp.department?.name || "-",
         position: emp.position?.name || "-",
         shift: emp.shift?.name || "-",
+        workingDays: days,
+        workingHours: hours,
+        employmentType: typeNameMap[emp.employmentType || "FULL_TIME"] || emp.employmentType,
+        joinDate: joinDateStr,
         status: emp.isActive ? "សកម្ម (Active)" : "អសកម្ម",
       });
     });
