@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   DollarSign,
+  Edit3,
   ChevronDown,
   Search,
   Coffee,
@@ -82,6 +83,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: [
         { title: t("navReports"), href: "/reports", icon: BarChart3 },
         { title: "ប្រាក់បៀវត្ស (Payroll)", href: "/payroll", icon: DollarSign },
+        { title: "កំណត់ប្រាក់ខែ (Setup)", href: "/payroll/setup", icon: Edit3 },
       ],
     },
     {
