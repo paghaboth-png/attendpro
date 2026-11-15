@@ -48,19 +48,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-950 via-slate-900 to-navy-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-gradient-to-br dark:from-navy-950 dark:via-slate-900 dark:to-navy-900 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-colors duration-200">
       {/* Background Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-500/5 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Language Switcher at Top Right */}
-      <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-slate-800/90 backdrop-blur border border-slate-700/60 rounded-full p-1 shadow-lg">
+      <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-slate-200 dark:border-slate-700/60 rounded-full p-1 shadow-md">
         <button
           type="button"
           onClick={() => setLocale("km")}
           className={`px-3 py-1 text-xs font-semibold rounded-full transition flex items-center gap-1.5 ${
             locale === "km"
               ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-              : "text-slate-400 hover:text-white"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <span>🇰🇭</span> ភាសាខ្មែរ
@@ -71,7 +71,7 @@ export default function LoginPage() {
           className={`px-3 py-1 text-xs font-semibold rounded-full transition flex items-center gap-1.5 ${
             locale === "en"
               ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-              : "text-slate-400 hover:text-white"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <span>🇬🇧</span> English
@@ -93,19 +93,19 @@ export default function LoginPage() {
               <Coffee className="w-8 h-8 text-white" />
             )}
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             AttendPro
           </h1>
-          <p className="text-sm font-medium text-slate-400 mt-1">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
             {t("companyDefault")} • {t("systemTagline")}
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-7 shadow-2xl shadow-black/50">
+        <div className="bg-white dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-7 shadow-xl dark:shadow-2xl">
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-white">{t("loginTitle")}</h2>
-            <p className="text-xs text-slate-400 mt-1">{t("loginSubtitle")}</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t("loginTitle")}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("loginSubtitle")}</p>
           </div>
 
           {error && (

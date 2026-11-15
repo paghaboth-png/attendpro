@@ -2,22 +2,272 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   AttendPro Design Tokens & Theme Variables (One Single Source of Truth)
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* LIGHT THEME (DEFAULT) */
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --border-card: #e2e8f0;
+  --border-subtle: #cbd5e1;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --shadow-dropdown: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.dark {
+  /* DARK THEME */
+  --bg-page: #020617;
+  --bg-card: #0f172a;
+  --bg-subtle: #1e293b;
+  --border-card: #1e293b;
+  --border-subtle: #334155;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.25), 0 2px 4px -2px rgb(0 0 0 / 0.25);
+  --shadow-dropdown: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES FOR LEGACY TAILWIND DARK-ONLY UTILITIES
+   Ensures entire application switches seamlessly to light theme without
+   manually modifying every single component.
+   ========================================================================== */
+html:not(.dark) {
+  /* Backgrounds: Cards, Panels, Modals, Tables */
+  .bg-slate-950,
+  .bg-slate-900,
+  .bg-slate-900\/90,
+  .bg-slate-900\/80,
+  .bg-slate-900\/70,
+  .bg-slate-900\/60,
+  .bg-slate-900\/50,
+  .bg-slate-900\/40,
+  .bg-slate-950\/70,
+  .bg-slate-950\/40,
+  .bg-slate-950\/90,
+  .bg-\[\#080d1f\],
+  .bg-\[\#070b1a\],
+  .bg-navy-950,
+  .bg-navy-900 {
+    background-color: #ffffff !important;
+  }
+
+  /* Page container backgrounds */
+  main,
+  .min-h-screen.bg-slate-950,
+  .min-h-screen.bg-slate-900 {
+    background-color: #f8fafc !important;
+  }
+
+  /* Subtle card sections */
+  .bg-slate-800,
+  .bg-slate-800\/80,
+  .bg-slate-800\/60,
+  .bg-slate-800\/50,
+  .bg-slate-800\/40 {
+    background-color: #f8fafc !important;
+  }
+
+  /* Borders */
+  .border-slate-800,
+  .border-slate-800\/80,
+  .border-slate-800\/70,
+  .border-slate-800\/60,
+  .border-slate-800\/50,
+  .border-slate-800\/40,
+  .border-slate-700,
+  .border-slate-700\/80,
+  .border-slate-700\/50 {
+    border-color: #e2e8f0 !important;
+  }
+
+  /* Default Text Colors */
+  .text-white {
+    color: #0f172a !important;
+  }
+  .text-slate-100,
+  .text-slate-200 {
+    color: #0f172a !important;
+  }
+  .text-slate-300 {
+    color: #334155 !important;
+  }
+  .text-slate-400 {
+    color: #64748b !important;
+  }
+  .text-slate-500 {
+    color: #64748b !important;
+  }
+
+  /* Inputs, Textareas, Selects */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  select,
+  textarea {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8 !important;
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #2563eb !important;
+    outline: none !important;
+    box-shadow: 0 0 0 1px #2563eb !important;
+  }
+
+  /* Tables */
+  table th {
+    background-color: #f8fafc !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
+  }
+  table td {
+    color: #1e293b !important;
+    border-color: #f1f5f9 !important;
+  }
+  table tr:hover {
+    background-color: #f8fafc !important;
+  }
+
+  /* Solid Colored Action Buttons (MUST keep white text) */
+  button.bg-blue-600,
+  button.bg-blue-600 *,
+  button.bg-blue-500,
+  button.bg-blue-500 *,
+  button.bg-emerald-600,
+  button.bg-emerald-600 *,
+  button.bg-rose-600,
+  button.bg-rose-600 *,
+  button.bg-amber-600,
+  button.bg-amber-600 *,
+  button.bg-indigo-600,
+  button.bg-indigo-600 *,
+  .bg-blue-600.text-white,
+  .bg-blue-600.text-white *,
+  .bg-emerald-600.text-white,
+  .bg-emerald-600.text-white *,
+  .bg-rose-600.text-white,
+  .bg-rose-600.text-white *,
+  a.bg-blue-600,
+  a.bg-blue-600 * {
+    color: #ffffff !important;
+  }
+
+  /* Status Badges & Accents (High Contrast on Light Theme) */
+  /* Emerald / Good / Present */
+  .bg-emerald-500\/10,
+  .bg-emerald-950,
+  .bg-emerald-950\/40,
+  .bg-emerald-950\/30 {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+  }
+  .text-emerald-400,
+  .text-emerald-300 {
+    color: #047857 !important;
+  }
+
+  /* Amber / Yellow / Late / Warning */
+  .bg-amber-500\/10,
+  .bg-amber-950,
+  .bg-amber-950\/40,
+  .bg-amber-950\/30,
+  .bg-yellow-500\/10,
+  .bg-yellow-950 {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+  }
+  .text-amber-400,
+  .text-amber-300,
+  .text-yellow-400 {
+    color: #b45309 !important;
+  }
+
+  /* Rose / Red / Absent / Danger / Error */
+  .bg-rose-500\/10,
+  .bg-rose-950,
+  .bg-rose-950\/40,
+  .bg-rose-950\/30,
+  .bg-red-500\/10 {
+    background-color: #fff1f2 !important;
+    border-color: #fecdd3 !important;
+  }
+  .text-rose-400,
+  .text-rose-300,
+  .text-red-400 {
+    color: #be123c !important;
+  }
+
+  /* Blue / Info */
+  .bg-blue-500\/10,
+  .bg-blue-950,
+  .bg-blue-950\/40,
+  .bg-blue-950\/30,
+  .bg-blue-600\/10,
+  .bg-blue-600\/20 {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+  }
+  .text-blue-400,
+  .text-blue-300 {
+    color: #1d4ed8 !important;
+  }
+
+  /* Modals & Popovers */
+  .fixed.inset-0.bg-black\/75,
+  .fixed.inset-0.bg-black\/70,
+  .fixed.inset-0.bg-black\/60 {
+    background-color: rgba(15, 23, 42, 0.45) !important;
+  }
+
+  /* DatePicker Popover */
+  .date-picker-popover {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05) !important;
+  }
+  .date-picker-popover .weekday-header {
+    color: #64748b !important;
+  }
+  .date-picker-popover .day-current-month {
+    color: #0f172a !important;
+  }
+  .date-picker-popover .day-current-month:hover {
+    background-color: #eff6ff !important;
+  }
+  .date-picker-popover .day-adjacent-month {
+    color: #cbd5e1 !important;
+  }
+
+  /* Recharts Charts */
+  .recharts-cartesian-grid line {
+    stroke: #e2e8f0 !important;
+  }
+  .recharts-text {
+    fill: #64748b !important;
+  }
+  .recharts-default-tooltip {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+  }
 }
 
 @layer utilities {

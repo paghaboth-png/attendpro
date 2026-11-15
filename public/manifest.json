@@ -4,8 +4,8 @@
   "description": "Employee Attendance Management System with GPS & Selfie",
   "start_url": "/checkin",
   "display": "standalone",
-  "background_color": "#070c1a",
-  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/favicon.ico",

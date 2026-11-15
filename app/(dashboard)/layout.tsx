@@ -34,7 +34,7 @@ export default function DashboardLayout({
 
   return (
     <CompanyProvider>
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex font-sans transition-colors duration-200">
         {/* Sidebar */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -44,7 +44,7 @@ export default function DashboardLayout({
           <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
 
           {/* Content Area */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
             {children}
           </main>
         </div>

@@ -270,8 +270,8 @@ export function DatePicker({
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
       {label && (
-        <label className="block text-slate-300 font-semibold mb-1 text-xs sm:text-xs">
-          {label} {required && <span className="text-rose-400">*</span>}
+        <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1 text-xs sm:text-xs">
+          {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
 
@@ -292,13 +292,13 @@ export function DatePicker({
           }}
           placeholder={placeholder}
           maxLength={10}
-          className={`w-full pl-3.5 pr-11 py-2 bg-slate-950 border rounded-xl text-white font-mono text-xs sm:text-sm placeholder-slate-500 transition focus:outline-none ${
+          className={`w-full pl-3.5 pr-11 py-2 bg-white dark:bg-slate-950 border rounded-xl text-slate-900 dark:text-white font-mono text-xs sm:text-sm placeholder-slate-400 dark:placeholder-slate-500 transition focus:outline-none ${
             hasError
               ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/20"
               : isOpen
               ? "border-blue-500 ring-2 ring-blue-500/20"
-              : "border-slate-800 hover:border-slate-700"
-          } ${disabled ? "opacity-50 cursor-not-allowed bg-slate-900" : "cursor-pointer"} ${inputClassName}`}
+              : "border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700"
+          } ${disabled ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900" : "cursor-pointer"} ${inputClassName}`}
         />
 
         {/* Clear button (if value exists and not disabled) */}
@@ -312,7 +312,7 @@ export function DatePicker({
               setFormatError(null);
               onChange("");
             }}
-            className="absolute right-9 text-slate-500 hover:text-slate-300 p-1"
+            className="absolute right-9 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 p-1"
             title={isKhmer ? "លុប" : "Clear"}
           >
             <X className="w-3.5 h-3.5" />
@@ -330,7 +330,7 @@ export function DatePicker({
           className={`absolute right-1.5 p-1.5 rounded-lg border transition flex items-center justify-center ${
             isOpen
               ? "bg-blue-600 border-blue-500 text-white shadow-xs"
-              : "bg-slate-800/90 hover:bg-slate-700 border-slate-700/80 text-slate-300 hover:text-white"
+              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700/80 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           title={isKhmer ? "បើកប្រតិទិន" : "Open Calendar"}
         >
@@ -349,15 +349,14 @@ export function DatePicker({
       {/* Popover Calendar */}
       {isOpen && !disabled && (
         <div
-          className="absolute left-0 top-full mt-1.5 z-50 w-[290px] sm:w-[305px] max-w-[calc(100vw-24px)] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md p-3.5 text-slate-100 animate-in fade-in zoom-in-95 duration-150 select-none"
-          style={{ boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.05)" }}
+          className="date-picker-popover absolute left-0 top-full mt-1.5 z-50 w-[290px] sm:w-[305px] max-w-[calc(100vw-24px)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xl dark:shadow-2xl backdrop-blur-md p-3.5 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150 select-none"
         >
           {/* Header: Prev, Month+Year, Next */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={prevMonth}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700/50 flex items-center justify-center"
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition border border-slate-200 dark:border-slate-700/50 flex items-center justify-center"
               title={isKhmer ? "ខែមុន" : "Previous Month"}
             >
               <ChevronLeft className="w-4 h-4" />
@@ -366,16 +365,16 @@ export function DatePicker({
             <button
               type="button"
               onClick={() => setIsMonthYearPickerOpen(!isMonthYearPickerOpen)}
-              className="px-2.5 py-1 rounded-lg hover:bg-slate-800 text-xs sm:text-sm font-bold text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700"
+              className="px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm font-bold text-slate-900 dark:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
             >
               <span>{monthName}</span>
-              <span className="font-mono text-blue-400">{viewYear}</span>
+              <span className="font-mono text-blue-600 dark:text-blue-400">{viewYear}</span>
             </button>
 
             <button
               type="button"
               onClick={nextMonth}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700/50 flex items-center justify-center"
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition border border-slate-200 dark:border-slate-700/50 flex items-center justify-center"
               title={isKhmer ? "ខែបន្ទាប់" : "Next Month"}
             >
               <ChevronRight className="w-4 h-4" />
@@ -454,12 +453,12 @@ export function DatePicker({
                   } else if (cell.isSelected) {
                     cellClasses += " bg-blue-600 text-white font-bold shadow-md shadow-blue-600/40 ring-2 ring-blue-400/50";
                   } else if (cell.isToday) {
-                    cellClasses += " border border-blue-400 text-blue-300 font-bold bg-blue-500/10 hover:bg-blue-500/20";
+                    cellClasses += " border border-blue-500 text-blue-600 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20";
                   } else if (cell.isCurrentMonth) {
-                    cellClasses += " text-slate-200 hover:bg-slate-800 hover:text-white";
+                    cellClasses += " text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white";
                   } else {
                     // Previous or next month day -> lighter gray, clickable
-                    cellClasses += " text-slate-500 hover:bg-slate-800/60 hover:text-slate-300";
+                    cellClasses += " text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-600 dark:hover:text-slate-300";
                   }
 
                   return (
@@ -486,12 +485,12 @@ export function DatePicker({
           )}
 
           {/* Footer Controls */}
-          <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-800 text-xs">
+          <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
             {showQuickToday ? (
               <button
                 type="button"
                 onClick={selectToday}
-                className="px-2.5 py-1 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 font-semibold transition"
+                className="px-2.5 py-1 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 font-semibold transition"
               >
                 {isKhmer ? "ថ្ងៃនេះ" : "Today"}
               </button>
@@ -505,7 +504,7 @@ export function DatePicker({
                 setIsOpen(false);
                 setIsMonthYearPickerOpen(false);
               }}
-              className="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 font-semibold transition"
+              className="px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold transition"
             >
               {isKhmer ? "បិទ" : "Close"}
             </button>

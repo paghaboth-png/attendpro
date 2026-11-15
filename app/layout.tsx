@@ -30,7 +30,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="km" className={`${inter.variable} ${notoSansKhmer.variable}`}>
-      <body className="font-sans antialiased bg-slate-900 text-slate-100 min-h-screen">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("attendpro-theme");if(t==="dark"){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}else{document.documentElement.classList.remove("dark");document.documentElement.style.colorScheme="light";}}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-200">
         <Providers>{children}</Providers>
       </body>
     </html>

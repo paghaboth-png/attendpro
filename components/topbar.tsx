@@ -19,7 +19,10 @@ import {
   Smartphone,
   Bell,
   Check,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/lib/theme-provider";
 
 interface TopBarProps {
   onOpenSidebar: () => void;
@@ -29,6 +32,7 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
   const { data: session } = useSession();
   const { t, locale, setLocale } = useI18n();
   const { company } = useCompany();
+  const { theme, toggleTheme } = useTheme();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -158,6 +162,20 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
           >
             <QrCode className="w-4 h-4" />
             <span className="hidden md:inline">QR Check-in</span>
+          </button>
+
+          {/* Light / Dark Theme Toggle (☀️/🌙) */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "ប្តូរទៅ Light Theme (☀️)" : "ប្តូរទៅ Dark Theme (🌙)"}
+            className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition flex items-center justify-center border border-slate-200 dark:border-slate-800"
+          >
+            {theme === "dark" ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-600" />
+            )}
           </button>
 
           {/* Fullscreen Toggle */}

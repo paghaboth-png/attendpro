@@ -297,7 +297,7 @@ export default function CheckinPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-4 sm:p-6 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-4 sm:p-6 font-sans transition-colors duration-200">
       <div className="w-full max-w-md space-y-5">
         {/* Top Header */}
         <div className="flex items-center justify-between pt-2">
@@ -315,8 +315,8 @@ export default function CheckinPage() {
               )}
             </div>
             <div>
-              <div className="font-bold text-sm text-white">AttendPro Mobile</div>
-              <div className="text-[10px] text-slate-400">TheDemo Coffee</div>
+              <div className="font-bold text-sm text-slate-900 dark:text-white">AttendPro Mobile</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">TheDemo Coffee</div>
             </div>
           </Link>
 
