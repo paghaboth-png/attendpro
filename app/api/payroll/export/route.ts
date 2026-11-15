@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     const nowKhmer = new Date(nowUtc.getTime() + phnomPenhOffset);
     const currentMonth = nowKhmer.toISOString().slice(0, 7);
 
+    const payrollId = searchParams.get("payrollId");
     const month = searchParams.get("month") || currentMonth;
     const branchId = searchParams.get("branchId") || "all";
 
@@ -29,27 +30,47 @@ export async function GET(req: Request) {
       branchId !== "all" ? await prisma.branch.findUnique({ where: { id: branchId } }) : null;
 
     // Fetch payroll record
-    const payroll = await prisma.payroll.findFirst({
-      where: {
-        companyId: company?.id,
-        month,
-        branchId: branchId === "all" ? null : branchId,
-      },
-      include: {
-        items: {
+    const payroll = payrollId
+      ? await prisma.payroll.findUnique({
+          where: { id: payrollId },
           include: {
-            employee: {
+            branch: true,
+            items: {
               include: {
-                branch: true,
-                position: true,
-                department: true,
+                employee: {
+                  include: {
+                    branch: true,
+                    position: true,
+                    department: true,
+                  },
+                },
               },
+              orderBy: { employee: { code: "asc" } },
             },
           },
-          orderBy: { employee: { code: "asc" } },
-        },
-      },
-    });
+        })
+      : await prisma.payroll.findFirst({
+          where: {
+            companyId: company?.id,
+            month,
+            branchId: branchId === "all" ? null : branchId,
+          },
+          include: {
+            branch: true,
+            items: {
+              include: {
+                employee: {
+                  include: {
+                    branch: true,
+                    position: true,
+                    department: true,
+                  },
+                },
+              },
+              orderBy: { employee: { code: "asc" } },
+            },
+          },
+        });
 
     if (!payroll || payroll.items.length === 0) {
       return NextResponse.json(
