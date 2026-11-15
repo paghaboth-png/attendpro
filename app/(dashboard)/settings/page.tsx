@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import {
   Settings,
   Camera,
@@ -12,6 +13,7 @@ import {
   AlertCircle,
   Globe,
   Shield,
+  ShieldAlert,
   RotateCw,
   Lock,
   KeyRound,
@@ -77,6 +79,50 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [pwSuccessMsg, setPwSuccessMsg] = useState<string | null>(null);
   const [pwErrorMsg, setPwErrorMsg] = useState<string | null>(null);
+
+  // Session & Demo Accounts state
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
+  const [demoAccounts, setDemoAccounts] = useState<any[]>([]);
+  const [allDemoDisabled, setAllDemoDisabled] = useState(false);
+  const [togglingDemo, setTogglingDemo] = useState(false);
+  const [demoMsg, setDemoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const fetchDemoAccounts = async () => {
+    try {
+      const res = await fetch("/api/admin/demo-accounts");
+      const data = await res.json();
+      if (data.success) {
+        setDemoAccounts(data.demoUsers || []);
+        setAllDemoDisabled(data.allDisabled || false);
+      }
+    } catch (err) {
+      console.error("fetchDemoAccounts error:", err);
+    }
+  };
+
+  const handleToggleDemoAccounts = async (action: "DISABLE" | "ENABLE") => {
+    setTogglingDemo(true);
+    setDemoMsg(null);
+    try {
+      const res = await fetch("/api/admin/demo-accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDemoMsg({ type: "success", text: data.message });
+        fetchDemoAccounts();
+      } else {
+        setDemoMsg({ type: "error", text: data.error || "បរាជ័យក្នុងការអនុវត្ត" });
+      }
+    } catch {
+      setDemoMsg({ type: "error", text: "មានបញ្ហាបច្ចេកទេស" });
+    } finally {
+      setTogglingDemo(false);
+    }
+  };
 
   // Telegram state (8C-1)
   const [tgBotToken, setTgBotToken] = useState("");
@@ -152,6 +198,12 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "security" && isSuperAdmin) {
+      fetchDemoAccounts();
+    }
+  }, [activeTab, isSuperAdmin]);
 
   const handleLogoSelect = async (file: File) => {
     setLogoError(null);
@@ -1241,6 +1293,96 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Super Admin: Manage Demo Accounts Card (Step ឃ) */}
+          {isSuperAdmin && (
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-500" />
+                    <span>គ្រប់គ្រងគណនីសាកល្បង (Demo Accounts Management)</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    សម្រាប់ត្រៀម Go-live អាចបិទដំណើរការគណនីសាកល្បងទាំង ៣ (admin, manager, employee) ក្នុងពេលតែមួយ
+                  </p>
+                </div>
+                <div>
+                  {allDemoDisabled ? (
+                    <button
+                      type="button"
+                      disabled={togglingDemo}
+                      onClick={() => handleToggleDemoAccounts("ENABLE")}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{togglingDemo ? "កំពុងដំណើរការ..." : "បើកគណនីសាកល្បងឡើងវិញ"}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={togglingDemo}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            "តើលោកអ្នកពិតជាចង់បិទគណនីសាកល្បងទាំង ៣ (admin@demo.com, manager@demo.com, employee@demo.com) មែនទេ? គណនីទាំងនេះនឹងលែងអាច Login ចូលបានទៀតហើយ។"
+                          )
+                        ) {
+                          handleToggleDemoAccounts("DISABLE");
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/20 transition disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      <span>{togglingDemo ? "កំពុងដំណើរការ..." : "បិទគណនីសាកល្បង (ទាំង ៣)"}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {demoMsg && (
+                <div
+                  className={`p-3.5 rounded-xl text-xs flex items-center gap-2 ${
+                    demoMsg.type === "success"
+                      ? "bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300"
+                      : "bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-300"
+                  }`}
+                >
+                  {demoMsg.type === "success" ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-500" />
+                  )}
+                  <span>{demoMsg.text}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {demoAccounts.map((acc) => (
+                  <div
+                    key={acc.id}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="text-xs font-semibold text-slate-800 dark:text-white">
+                        {acc.name}
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-mono">{acc.email}</div>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        acc.isActive
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                          : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                      }`}
+                    >
+                      {acc.isActive ? "សកម្ម (Active)" : "បានបិទ (Disabled)"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

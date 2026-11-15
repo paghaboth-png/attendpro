@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/topbar";
 import { useI18n } from "@/lib/i18n";
 import { CompanyProvider } from "@/lib/company-context";
+import { ForceChangePasswordModal } from "@/components/force-change-password-modal";
 
 export default function DashboardLayout({
   children,
@@ -48,6 +49,9 @@ export default function DashboardLayout({
             {children}
           </main>
         </div>
+
+        {/* Forced Password Change Modal (First login or reset) */}
+        <ForceChangePasswordModal />
       </div>
     </CompanyProvider>
   );

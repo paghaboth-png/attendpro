@@ -5,14 +5,16 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-const ChangePasswordSchema = z.object({
-  oldPassword: z.string().min(1, "សូមបញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន"),
-  newPassword: z.string().min(6, "ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៦ តួ"),
-  confirmPassword: z.string().min(6, "សូមបញ្ជាក់ពាក្យសម្ងាត់ថ្មី"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "ពាក្យសម្ងាត់ថ្មីទាំងពីរមិនដូចគ្នាទេ",
-  path: ["confirmPassword"],
-});
+const ChangePasswordSchema = z
+  .object({
+    oldPassword: z.string().optional(),
+    newPassword: z.string().min(8, "ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៨ តួ"),
+    confirmPassword: z.string().min(8, "សូមបញ្ជាក់ពាក្យសម្ងាត់ថ្មី"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "ពាក្យសម្ងាត់ថ្មីទាំងពីរមិនដូចគ្នាទេ",
+    path: ["confirmPassword"],
+  });
 
 export async function POST(req: Request) {
   try {
@@ -30,7 +32,10 @@ export async function POST(req: Request) {
     const parsed = ChangePasswordSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.issues[0]?.message || "ទិន្នន័យមិនត្រឹមត្រូវ" },
+        {
+          success: false,
+          error: parsed.error.issues[0]?.message || "ទិន្នន័យមិនត្រឹមត្រូវ",
+        },
         { status: 400 }
       );
     }
@@ -46,10 +51,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const isMatch = await bcrypt.compare(parsed.data.oldPassword, user.passwordHash);
-    if (!isMatch) {
+    // If user is not in forced password change mode, verify old password
+    if (!user.mustChangePassword && parsed.data.oldPassword) {
+      const isMatch = await bcrypt.compare(
+        parsed.data.oldPassword,
+        user.passwordHash
+      );
+      if (!isMatch) {
+        return NextResponse.json(
+          { success: false, error: "ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវឡើយ" },
+          { status: 400 }
+        );
+      }
+    } else if (!user.mustChangePassword && !parsed.data.oldPassword) {
       return NextResponse.json(
-        { success: false, error: "ពាក្យសម្ងាត់បច្ចុប្បន្នមិនត្រឹមត្រូវឡើយ" },
+        { success: false, error: "សូមបញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្ន" },
         { status: 400 }
       );
     }
@@ -57,7 +73,12 @@ export async function POST(req: Request) {
     const newHash = await bcrypt.hash(parsed.data.newPassword, 10);
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: newHash },
+      data: {
+        passwordHash: newHash,
+        mustChangePassword: false,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
     });
 
     // Write audit log
@@ -66,7 +87,7 @@ export async function POST(req: Request) {
         userId: user.id,
         action: "PASSWORD_CHANGE",
         entity: "User",
-        details: `បានប្តូរពាក្យសម្ងាត់ផ្ទាល់ខ្លួនដោយជោគជ័យ (${user.email || user.name})`,
+        details: `បានប្តូរពាក្យសម្ងាត់ដោយជោគជ័យ (${user.email || user.phone || user.name})`,
       },
     });
 
