@@ -42,6 +42,20 @@ export default function CheckinPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"checkin" | "history">("checkin");
 
+  // System Settings State (Selfie Requirement)
+  const [requireSelfie, setRequireSelfie] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setRequireSelfie(Boolean(json.data.requireSelfie));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Fetch employee info & status
   const fetchEmployee = async (codeToFetch: string) => {
     if (!codeToFetch) return;
@@ -176,7 +190,7 @@ export default function CheckinPage() {
           lat: effectiveLat,
           lng: effectiveLng,
           accuracy: effectiveAcc,
-          photoUrl: selfiePhoto,
+          photoUrl: requireSelfie ? selfiePhoto : null,
         }),
       });
 
@@ -222,7 +236,7 @@ export default function CheckinPage() {
 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>GPS + Selfie</span>
+            <span>{requireSelfie ? "GPS + Selfie" : "GPS Geofenced 📍"}</span>
           </div>
         </div>
 
@@ -374,72 +388,88 @@ export default function CheckinPage() {
               )}
             </div>
 
-            {/* Selfie Verification Card */}
-            <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold text-white">
-                  <Camera className="w-4 h-4 text-blue-400" />
-                  <span>រូបថតបញ្ជាក់ផ្ទាល់ (Selfie Photo)</span>
-                </div>
-                {selfiePhoto && (
-                  <button
-                    onClick={() => setSelfiePhoto(null)}
-                    className="text-[11px] text-rose-400 hover:underline"
-                  >
-                    ថតសារឡើងវិញ
-                  </button>
-                )}
-              </div>
-
-              {selfiePhoto ? (
-                <div className="relative rounded-2xl overflow-hidden border border-emerald-500/40">
-                  <img
-                    src={selfiePhoto}
-                    alt="Selfie"
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 shadow-md">
-                    <Check className="w-3 h-3" />
-                    <span>ថតរួចរាល់</span>
+            {/* Selfie Verification Card (Only if enabled in Settings) */}
+            {requireSelfie ? (
+              <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-white">
+                    <Camera className="w-4 h-4 text-blue-400" />
+                    <span>រូបថតបញ្ជាក់ផ្ទាល់ (Selfie Photo)</span>
                   </div>
+                  {selfiePhoto && (
+                    <button
+                      onClick={() => setSelfiePhoto(null)}
+                      className="text-[11px] text-rose-400 hover:underline"
+                    >
+                      ថតសារឡើងវិញ
+                    </button>
+                  )}
                 </div>
-              ) : cameraActive ? (
-                <div className="space-y-3">
-                  <div className="rounded-2xl overflow-hidden bg-black border border-slate-700">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
+
+                {selfiePhoto ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-emerald-500/40">
+                    <img
+                      src={selfiePhoto}
+                      alt="Selfie"
                       className="w-full h-48 object-cover"
                     />
+                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 shadow-md">
+                      <Check className="w-3 h-3" />
+                      <span>ថតរួចរាល់</span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={capturePhoto}
-                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2"
+                ) : cameraActive ? (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl overflow-hidden bg-black border border-slate-700">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>ចុចថតរូប Selfie ឥឡូវនេះ</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={startCamera}
+                    className="p-6 rounded-2xl border-2 border-dashed border-slate-700 hover:border-blue-500 cursor-pointer flex flex-col items-center justify-center text-center gap-2 transition bg-slate-950/40"
                   >
-                    <Camera className="w-4 h-4" />
-                    <span>ចុចថតរូប Selfie ឥឡូវនេះ</span>
-                  </button>
-                </div>
-              ) : (
-                <div
-                  onClick={startCamera}
-                  className="p-6 rounded-2xl border-2 border-dashed border-slate-700 hover:border-blue-500 cursor-pointer flex flex-col items-center justify-center text-center gap-2 transition bg-slate-950/40"
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center">
-                    <Camera className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                    <div className="text-xs font-bold text-white">
+                      ចុចទីនេះដើម្បីបើកកាមេរ៉ាថតរូប Selfie
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      ធានាថាមិនអាចឱ្យអ្នកផ្សេងស្កេនជំនួសបានឡើយ
+                    </p>
                   </div>
-                  <div className="text-xs font-bold text-white">
-                    ចុចទីនេះដើម្បីបើកកាមេរ៉ាថតរូប Selfie
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                    ធានាថាមិនអាចឱ្យអ្នកផ្សេងស្កេនជំនួសបានឡើយ
-                  </p>
+                )}
+                <canvas ref={canvasRef} className="hidden" />
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800/60 flex items-center gap-3 text-xs text-slate-300">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Sparkles className="w-4 h-4" />
                 </div>
-              )}
-              <canvas ref={canvasRef} className="hidden" />
-            </div>
+                <div>
+                  <div className="font-bold text-white text-xs">
+                    ស្កេនរហ័សទាន់ចិត្ត (Instant 1-Tap Check-in)
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    មិនចាំបាច់ថតរូប Selfie — ផ្ទៀងផ្ទាត់ទីតាំង GPS រួចចុច Check-in បានភ្លាមៗ
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Error or Success Alert */}
             {errorMsg && (

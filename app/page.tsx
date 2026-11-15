@@ -99,7 +99,7 @@ export default function HomePage() {
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
           គ្រប់គ្រងវត្តមានបុគ្គលិកឆ្លាតវៃ
           <span className="block text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent mt-3">
-            ជាមួយ GPS Check-in & Selfie Verification
+            ជាមួយ GPS Geofenced Check-in & Real-Time Tracking
           </span>
         </h1>
 
@@ -143,13 +143,13 @@ export default function HomePage() {
 
           <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-sm hover:border-slate-700 transition">
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3">
-              <Camera className="w-5 h-5" />
+              <Sparkles className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-white text-sm mb-1">
-              Selfie Verification
+              Instant 1-Tap Check-in
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              ថតរូបមុខផ្ទាល់ពេល Check-in ការពារការស្កេនជំនួសគ្នាបានយ៉ាងមានប្រសិទ្ធភាព។
+              បុគ្គលិកចុច Check-in ឬ Check-out បានភ្លាមៗ រហ័សទាន់ចិត្ត និងផ្ទៀងផ្ទាត់ GPS ត្រឹមត្រូវ។
             </p>
           </div>
 

@@ -19,7 +19,7 @@ const notoSansKhmer = Noto_Sans_Khmer({
 export const metadata: Metadata = {
   title: "AttendPro - ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិក (TheDemo Coffee)",
   description:
-    "ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិកតាមអនឡាញ ជាមួយ GPS Check-in, Selfie Verification និង Live Dashboard",
+    "ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិកតាមអនឡាញ ជាមួយ GPS Geofenced Check-in និង Live Dashboard",
   manifest: "/manifest.json",
 };
 

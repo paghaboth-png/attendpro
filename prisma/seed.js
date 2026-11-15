@@ -188,7 +188,28 @@ async function main() {
     },
   });
 
-  // 8. Create Users with encrypted passwords
+  // 8. Create Default System Settings
+  await prisma.setting.upsert({
+    where: { key: 'require_selfie' },
+    update: { value: 'false' },
+    create: {
+      companyId: company.id,
+      key: 'require_selfie',
+      value: 'false',
+    },
+  });
+  await prisma.setting.upsert({
+    where: { key: 'require_gps' },
+    update: { value: 'true' },
+    create: {
+      companyId: company.id,
+      key: 'require_gps',
+      value: 'true',
+    },
+  });
+  console.log('✅ Settings initialized (require_selfie: false, require_gps: true)');
+
+  // 9. Create Users with encrypted passwords
   const adminPasswordHash = await bcrypt.hash('Admin@12345', 10);
   const managerPasswordHash = await bcrypt.hash('Manager@12345', 10);
   const employeePasswordHash = await bcrypt.hash('Employee@12345', 10);

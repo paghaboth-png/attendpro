@@ -7,7 +7,7 @@ export default function AttendancesPage() {
   return (
     <PlaceholderPage
       title="បញ្ជីវត្តមានបុគ្គលិក (Attendances)"
-      subtitle="តាមដាន និងគ្រប់គ្រងការ Check-in, Check-out, ពិនិត្យរូបថត Selfie និងទីតាំង GPS របស់បុគ្គលិក"
+      subtitle="តាមដាន និងគ្រប់គ្រងការ Check-in, Check-out, ស្ថានភាពទាន់ពេល/មកយឺត និងទីតាំង GPS របស់បុគ្គលិក"
       phaseNotice="Phase 5 • Attendance Management"
       icon={CalendarCheck}
     />
