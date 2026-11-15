@@ -24,6 +24,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { DatePicker } from "@/components/date-picker";
 
 export default function AttendancesPage() {
   const { t } = useI18n();
@@ -342,24 +343,11 @@ export default function AttendancesPage() {
           {/* Date Picker */}
           <div>
             <label className="block text-slate-400 mb-1">កាលបរិច្ឆេទ</label>
-            <div className="flex gap-1.5">
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none"
-              />
-              {date && (
-                <button
-                  type="button"
-                  onClick={() => setDate("")}
-                  className="px-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl"
-                  title="មើលគ្រប់កាលបរិច្ឆេទ"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <DatePicker
+              value={date}
+              onChange={setDate}
+              placeholder="កាលបរិច្ឆេទទាំងអស់"
+            />
           </div>
 
           {/* Branch Filter */}
@@ -867,18 +855,12 @@ export default function AttendancesPage() {
 
               {/* Date */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  កាលបរិច្ឆេទវត្តមាន *
-                </label>
-                <input
-                  type="date"
+                <DatePicker
+                  label="កាលបរិច្ឆេទវត្តមាន"
                   required
                   disabled={Boolean(editingRecord)}
                   value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none disabled:opacity-60"
+                  onChange={(d) => setFormData({ ...formData, date: d })}
                 />
               </div>
 

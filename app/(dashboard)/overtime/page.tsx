@@ -14,6 +14,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { DatePicker } from "@/components/date-picker";
 
 export default function OvertimePage() {
   const { t } = useI18n();
@@ -355,17 +356,11 @@ export default function OvertimePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    កាលបរិច្ឆេទ OT *
-                  </label>
-                  <input
-                    type="date"
+                  <DatePicker
+                    label="កាលបរិច្ឆេទ OT"
                     required
                     value={formData.date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none"
+                    onChange={(d) => setFormData({ ...formData, date: d })}
                   />
                 </div>
                 <div>

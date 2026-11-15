@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
+import { DatePicker } from "@/components/date-picker";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -175,13 +176,11 @@ export default function DashboardPage() {
       <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Date Picker */}
-          <div className="flex items-center gap-2 bg-slate-950 px-3.5 py-2 rounded-2xl border border-slate-800 text-xs text-white">
-            <Calendar className="w-4 h-4 text-blue-400" />
-            <input
-              type="date"
+          <div className="w-44">
+            <DatePicker
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="bg-transparent text-white font-mono focus:outline-none cursor-pointer"
+              onChange={setDate}
+              placeholder="yyyy-MM-dd"
             />
           </div>
 

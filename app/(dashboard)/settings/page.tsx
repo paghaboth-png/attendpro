@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Settings,
+  Calendar,
   Camera,
   MapPin,
   Clock,
@@ -59,6 +60,7 @@ export default function SettingsPage() {
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [nssfEnabled, setNssfEnabled] = useState(false);
   const [allowEmployeeViewPayslip, setAllowEmployeeViewPayslip] = useState(false);
+  const [payrollCutoffDay, setPayrollCutoffDay] = useState(7);
 
   // Change Password state
   const [oldPassword, setOldPassword] = useState("");
@@ -113,6 +115,7 @@ export default function SettingsPage() {
           setTaxEnabled(Boolean(d.taxEnabled));
           setNssfEnabled(Boolean(d.nssfEnabled));
           setAllowEmployeeViewPayslip(Boolean(d.allowEmployeeViewPayslip));
+          setPayrollCutoffDay(parseInt(d.payrollCutoffDay) || 7);
         }
       })
       .catch(() => {});
@@ -171,6 +174,7 @@ export default function SettingsPage() {
           taxEnabled,
           nssfEnabled,
           allowEmployeeViewPayslip,
+          payrollCutoffDay,
         }),
       });
 
@@ -741,6 +745,29 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+              {/* Payroll Cutoff Day */}
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+                <label className="block font-bold text-white flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                  <span>ថ្ងៃចាប់ផ្តើមវដ្ដកាត់ប្រាក់ខែ (Payroll Cutoff Day)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-xs">ថ្ងៃទី</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="28"
+                    value={payrollCutoffDay}
+                    onChange={(e) => setPayrollCutoffDay(parseInt(e.target.value) || 7)}
+                    className="w-24 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono text-xs focus:border-blue-500"
+                  />
+                  <span className="text-slate-400 text-xs">នៃខែនីមួយៗ</span>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  ឧទាហរណ៍៖ ថ្ងៃទី 7 ➜ វដ្ដរត់ពីថ្ងៃទី 7 ខែមុន ដល់ថ្ងៃទី 6 ខែនេះ
+                </p>
+              </div>
+
               {/* Late Penalty */}
               <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
                 <label className="block font-bold text-white">

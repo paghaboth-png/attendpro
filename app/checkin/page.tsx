@@ -21,6 +21,8 @@ import {
   CalendarDays,
   FileText,
 } from "lucide-react";
+import { DatePicker } from "@/components/date-picker";
+import { DateRangePicker } from "@/components/date-range-picker";
 
 export default function CheckinPage() {
   const [employeeCode, setEmployeeCode] = useState("EMP002"); // Default: ចាន់ ធីតា (Barista)
@@ -794,46 +796,27 @@ export default function CheckinPage() {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">
-                        ចាប់ពីថ្ងៃ
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={reqFromDate}
-                        onChange={(e) => setReqFromDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-300 font-semibold mb-1">
-                        ដល់ថ្ងៃ
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={reqToDate}
-                        onChange={(e) => setReqToDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
-                      />
-                    </div>
-                  </div>
+                  <DateRangePicker
+                    startDate={reqFromDate}
+                    endDate={reqToDate}
+                    onChange={(s, e) => {
+                      setReqFromDate(s);
+                      setReqToDate(e);
+                    }}
+                    startLabel="ចាប់ពីថ្ងៃ"
+                    endLabel="ដល់ថ្ងៃ"
+                    required
+                  />
                 </>
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-slate-300 font-semibold mb-1">
-                        កាលបរិច្ឆេទ OT
-                      </label>
-                      <input
-                        type="date"
+                      <DatePicker
+                        label="កាលបរិច្ឆេទ OT"
                         required
                         value={reqFromDate}
-                        onChange={(e) => setReqFromDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
+                        onChange={setReqFromDate}
                       />
                     </div>
                     <div>

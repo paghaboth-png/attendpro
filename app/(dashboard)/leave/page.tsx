@@ -18,6 +18,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { DateRangePicker } from "@/components/date-range-picker";
 
 export default function LeavePage() {
   const { t } = useI18n();
@@ -481,36 +482,16 @@ export default function LeavePage() {
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    ចាប់ពីថ្ងៃ *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.fromDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fromDate: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    រហូតដល់ថ្ងៃ *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.toDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, toDate: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+              <DateRangePicker
+                startDate={formData.fromDate}
+                endDate={formData.toDate}
+                onChange={(start, end) =>
+                  setFormData({ ...formData, fromDate: start, toDate: end })
+                }
+                startLabel="ចាប់ពីថ្ងៃ *"
+                endLabel="រហូតដល់ថ្ងៃ *"
+                required
+              />
 
               {/* Reason */}
               <div>

@@ -25,6 +25,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { DatePicker } from "@/components/date-picker";
 
 const DAYS_OF_WEEK = [
   { key: "1", label: "ចន្ទ", en: "Mon" },
@@ -1116,17 +1117,13 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Important Dates: Join Date (Required), Probation, Contract */}
-                <div className="grid grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80">
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">
-                      ថ្ងៃចូលធ្វើការ * (Required)
-                    </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      label="ថ្ងៃចូលធ្វើការ (Join Date)"
                       required
                       value={formData.joinDate}
-                      onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
-                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:border-blue-500"
+                      onChange={(d) => setFormData({ ...formData, joinDate: d })}
                     />
                     <span className="text-[10px] text-slate-500 block mt-0.5">
                       ថ្ងៃមុននេះមិនរាប់ជាអវត្តមាន
@@ -1134,16 +1131,10 @@ export default function EmployeesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">
-                      ចប់សាកល្បង (Probation End)
-                    </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      label="ចប់សាកល្បង (Probation End)"
                       value={formData.endProbationDate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, endProbationDate: e.target.value })
-                      }
-                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:border-blue-500"
+                      onChange={(d) => setFormData({ ...formData, endProbationDate: d })}
                     />
                     <span className="text-[10px] text-slate-500 block mt-0.5">
                       ជូនដំណឹងមុន ៧ ថ្ងៃ
@@ -1151,16 +1142,10 @@ export default function EmployeesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">
-                      ផុតកិច្ចសន្យា (Contract End)
-                    </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      label="ផុតកិច្ចសន្យា (Contract End)"
                       value={formData.endContractDate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, endContractDate: e.target.value })
-                      }
-                      className="w-full px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:border-blue-500"
+                      onChange={(d) => setFormData({ ...formData, endContractDate: d })}
                     />
                     <span className="text-[10px] text-slate-500 block mt-0.5">
                       ជូនដំណឹងមុន ៧ ថ្ងៃ

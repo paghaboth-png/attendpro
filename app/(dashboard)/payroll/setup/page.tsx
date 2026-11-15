@@ -28,6 +28,7 @@ import {
   AlertCircle,
   RotateCw,
 } from "lucide-react";
+import { DatePicker } from "@/components/date-picker";
 
 interface EmployeeSalaryItem {
   id: string;
@@ -774,17 +775,13 @@ export default function SalarySetupPage() {
 
               {/* Effective Date */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1 flex items-center justify-between">
-                  <span>ថ្ងៃចាប់ផ្តើមមានសុពលភាព (Effective Date) *</span>
-                  <span className="text-[10px] text-slate-500">Payroll ចាស់មិនប្តូរតាម</span>
-                </label>
-                <input
-                  type="date"
+                <DatePicker
+                  label="ថ្ងៃចាប់ផ្តើមមានសុពលភាព (Effective Date)"
                   required
                   value={editEffectiveDate}
-                  onChange={(e) => setEditEffectiveDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-blue-500"
+                  onChange={setEditEffectiveDate}
                 />
+                <span className="text-[10px] text-slate-500 block mt-0.5">Payroll ចាស់មិនប្តូរតាម</span>
               </div>
 
               {/* Note / Reason */}
@@ -957,15 +954,11 @@ export default function SalarySetupPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  ថ្ងៃចាប់ផ្តើមមានសុពលភាព *
-                </label>
-                <input
-                  type="date"
+                <DatePicker
+                  label="ថ្ងៃចាប់ផ្តើមមានសុពលភាព"
                   required
                   value={bulkEffectiveDate}
-                  onChange={(e) => setBulkEffectiveDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-blue-500"
+                  onChange={setBulkEffectiveDate}
                 />
               </div>
 
@@ -1107,15 +1100,11 @@ export default function SalarySetupPage() {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  ថ្ងៃចាប់ផ្តើមមានសុពលភាព *
-                </label>
-                <input
-                  type="date"
+                <DatePicker
+                  label="ថ្ងៃចាប់ផ្តើមមានសុពលភាព"
                   required
                   value={importEffectiveDate}
-                  onChange={(e) => setImportEffectiveDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-blue-500"
+                  onChange={setImportEffectiveDate}
                 />
               </div>
 

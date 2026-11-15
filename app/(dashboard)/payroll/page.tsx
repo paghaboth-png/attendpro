@@ -38,6 +38,8 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
+import { DateRangePicker } from "@/components/date-range-picker";
+import { PayrollDatePresets } from "@/components/payroll-date-presets";
 
 interface PayrollItem {
   id: string;
@@ -129,6 +131,7 @@ export default function PayrollPage() {
   const [genEmployeeMode, setGenEmployeeMode] = useState<"ALL" | "SPECIFIC">("ALL");
   const [genSelectedEmpIds, setGenSelectedEmpIds] = useState<string[]>([]);
   const [genShowResign, setGenShowResign] = useState(false);
+  const [cutoffDay, setCutoffDay] = useState(7);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
 
@@ -195,16 +198,25 @@ export default function PayrollPage() {
   // 3. Fetch branches, departments, and employees for generator
   const fetchMetadata = async () => {
     try {
-      const [bRes, dRes, eRes] = await Promise.all([
+      const [bRes, dRes, eRes, sRes] = await Promise.all([
         fetch("/api/branches"),
         fetch("/api/departments"),
         fetch("/api/employees"),
+        fetch("/api/settings"),
       ]);
-      const [bJson, dJson, eJson] = await Promise.all([bRes.json(), dRes.json(), eRes.json()]);
+      const [bJson, dJson, eJson, sJson] = await Promise.all([
+        bRes.json(),
+        dRes.json(),
+        eRes.json(),
+        sRes.json(),
+      ]);
 
       if (bJson.success) setBranches(bJson.data || []);
       if (dJson.success) setDepartments(dJson.data || []);
       if (eJson.success) setAllEmployees(eJson.data || []);
+      if (sJson.success && sJson.data?.payrollCutoffDay) {
+        setCutoffDay(sJson.data.payrollCutoffDay);
+      }
     } catch {
       console.error("Metadata fetch error");
     }
@@ -742,78 +754,28 @@ export default function PayrollPage() {
 
           <form onSubmit={handleGeneratePayroll} className="space-y-5 text-xs">
             {/* Quick Date Range Selectors */}
-            <div className="space-y-2">
-              <div className="text-slate-300 font-semibold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>ជម្រើសចន្លោះថ្ងៃរហ័ស (Quick Presets)៖</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDateSelect("THIS_MONTH")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium border border-slate-700"
-                >
-                  ខែនេះ (This Month)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDateSelect("LAST_MONTH")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium border border-slate-700"
-                >
-                  ខែមុន (Last Month)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDateSelect("FIRST_HALF")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium border border-slate-700"
-                >
-                  កន្លះខែដំបូង (1-15)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDateSelect("SECOND_HALF")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium border border-slate-700"
-                >
-                  កន្លះខែក្រោយ (16-ចុងខែ)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDateSelect("CUTOFF_7")}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium border border-slate-700"
-                >
-                  កាត់ត្រឹមថ្ងៃទី 7 (7 ដល់ 6)
-                </button>
-              </div>
-            </div>
+            <PayrollDatePresets
+              startDate={genStartDate}
+              endDate={genEndDate}
+              cutoffDay={cutoffDay}
+              onSelect={(start, end) => {
+                setGenStartDate(start);
+                setGenEndDate(end);
+              }}
+            />
 
-            {/* Date Range Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  ចាប់ពីថ្ងៃ (From Date) *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={genStartDate}
-                  onChange={(e) => setGenStartDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  ដល់ថ្ងៃ (To Date) *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={genEndDate}
-                  onChange={(e) => setGenEndDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+            {/* Date Range Inputs with Custom Popover Calendar */}
+            <DateRangePicker
+              startDate={genStartDate}
+              endDate={genEndDate}
+              onChange={(start, end) => {
+                setGenStartDate(start);
+                setGenEndDate(end);
+              }}
+              startLabel="ចាប់ពីថ្ងៃ (From Date) *"
+              endLabel="ដល់ថ្ងៃ (To Date) *"
+              required
+            />
 
             {/* Branch & Department */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

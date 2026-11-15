@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { DatePicker } from "@/components/date-picker";
 
 export default function ReportsPage() {
   const { t } = useI18n();
@@ -202,22 +203,26 @@ export default function ReportsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           <div>
-            <label className="block text-slate-400 mb-1">ចាប់ពីថ្ងៃ</label>
-            <input
-              type="date"
+            <DatePicker
+              label="ចាប់ពីថ្ងៃ"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none"
+              onChange={(s) => {
+                setStartDate(s);
+                if (endDate && s > endDate) setEndDate(s);
+              }}
+              maxDate={endDate || undefined}
             />
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">រហូតដល់ថ្ងៃ</label>
-            <input
-              type="date"
+            <DatePicker
+              label="រហូតដល់ថ្ងៃ"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono focus:border-blue-500 focus:outline-none"
+              onChange={(e) => {
+                setEndDate(e);
+                if (startDate && e < startDate) setStartDate(e);
+              }}
+              minDate={startDate || undefined}
             />
           </div>
 
