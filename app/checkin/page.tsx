@@ -48,6 +48,7 @@ export default function CheckinPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"checkin" | "history" | "request">("checkin");
   const [confirmDayOffModal, setConfirmDayOffModal] = useState<any | null>(null);
+  const [logoError, setLogoError] = useState(false);
 
   // Mobile Request State (Leave & OT)
   const [requestType, setRequestType] = useState<"LEAVE" | "OT">("LEAVE");
@@ -301,8 +302,17 @@ export default function CheckinPage() {
         {/* Top Header */}
         <div className="flex items-center justify-between pt-2">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <Coffee className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 overflow-hidden p-1 bg-white/5">
+              {!logoError ? (
+                <img
+                  src="/api/company/logo"
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Coffee className="w-5 h-5 text-white" />
+              )}
             </div>
             <div>
               <div className="font-bold text-sm text-white">AttendPro Mobile</div>

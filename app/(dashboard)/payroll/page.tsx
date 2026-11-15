@@ -1318,15 +1318,23 @@ export default function PayrollPage() {
           <div className="w-full max-w-2xl rounded-2xl bg-white text-slate-800 p-6 sm:p-8 shadow-2xl space-y-6 print:shadow-none print:w-full print:max-w-none">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-200 pb-4">
-              <div>
-                <div className="text-xl font-black text-slate-900 tracking-tight">
-                  THEDEMO COFFEE & RESTAURANT
-                </div>
-                <div className="text-xs text-slate-500">
-                  សាខា៖ {payslipItem.employee.branch?.name || "THE ONE COFFEE (ស្វាយរៀង)"}
-                </div>
-                <div className="text-sm font-bold text-blue-700 mt-2">
-                  បង្កាន់ដៃបើកប្រាក់បៀវត្សរ៍ (OFFICIAL SALARY PAYSLIP)
+              <div className="flex items-center gap-3">
+                <img
+                  src="/api/company/logo"
+                  alt="Logo"
+                  className="w-14 h-14 object-contain rounded-xl border border-slate-200 p-1 bg-white shrink-0"
+                  onError={(e) => ((e.currentTarget as HTMLElement).style.display = "none")}
+                />
+                <div>
+                  <div className="text-xl font-black text-slate-900 tracking-tight">
+                    THEDEMO COFFEE & RESTAURANT
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    សាខា៖ {payslipItem.employee.branch?.name || "THE ONE COFFEE (ស្វាយរៀង)"}
+                  </div>
+                  <div className="text-sm font-bold text-blue-700 mt-1">
+                    បង្កាន់ដៃបើកប្រាក់បៀវត្សរ៍ (OFFICIAL SALARY PAYSLIP)
+                  </div>
                 </div>
               </div>
               <button

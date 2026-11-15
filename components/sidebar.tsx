@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
+import { useCompany } from "@/lib/company-context";
 import {
   LayoutDashboard,
   Building2,
@@ -33,6 +34,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const { company } = useCompany();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [setupExpanded, setSetupExpanded] = useState(true);
@@ -114,9 +116,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Brand Header */}
         <div className="p-5 flex items-center justify-between border-b border-slate-800/70">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-600/30 group-hover:scale-105 transition">
-              <Coffee className="w-5 h-5 text-white" />
-            </div>
+            {company.logoUrl ? (
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1 shadow-md shadow-blue-500/10 group-hover:scale-105 transition overflow-hidden">
+                <img
+                  src={company.logoUrl}
+                  alt={company.name || "Logo"}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-600/30 group-hover:scale-105 transition">
+                <Coffee className="w-5 h-5 text-white" />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-lg text-white tracking-tight">
@@ -127,7 +139,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-medium truncate max-w-[140px]">
-                {t("companyDefault")}
+                {company.name || t("companyDefault")}
               </p>
             </div>
           </Link>

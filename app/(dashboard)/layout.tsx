@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/topbar";
 import { useI18n } from "@/lib/i18n";
+import { CompanyProvider } from "@/lib/company-context";
 
 export default function DashboardLayout({
   children,
@@ -32,20 +33,22 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <CompanyProvider>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+        {/* Sidebar */}
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-72">
-        {/* Top Bar */}
-        <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
+        {/* Main Wrapper */}
+        <div className="flex-1 flex flex-col min-w-0 lg:pl-72">
+          {/* Top Bar */}
+          <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
 
-        {/* Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          {children}
-        </main>
+          {/* Content Area */}
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </CompanyProvider>
   );
 }

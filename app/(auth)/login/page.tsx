@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,8 +81,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md z-10">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-xl shadow-blue-600/30 mb-4 border border-blue-400/20">
-            <Coffee className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-xl shadow-blue-600/30 mb-4 border border-blue-400/20 overflow-hidden p-1.5 bg-white/5">
+            {!logoError ? (
+              <img
+                src="/api/company/logo"
+                alt="Logo"
+                className="w-full h-full object-contain"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <Coffee className="w-8 h-8 text-white" />
+            )}
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">
             AttendPro

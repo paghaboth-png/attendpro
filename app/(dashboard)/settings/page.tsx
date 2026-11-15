@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Settings,
   Camera,
@@ -23,7 +23,11 @@ import {
   EyeOff,
   ExternalLink,
   X,
+  Upload,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
+import { compressLogoImage } from "@/lib/image-utils";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<
@@ -43,6 +47,12 @@ export default function SettingsPage() {
     "ក្រុងស្វាយរៀង ខេត្តស្វាយរៀង"
   );
   const [companyLogoUrl, setCompanyLogoUrl] = useState("");
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [logoAction, setLogoAction] = useState<"NONE" | "UPLOAD" | "REMOVE">("NONE");
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Verification & General Settings
   const [requireSelfie, setRequireSelfie] = useState(false);
@@ -98,7 +108,9 @@ export default function SettingsPage() {
             setCompanyPhone(d.company.phone || "");
             setCompanyEmail(d.company.email || "");
             setCompanyAddress(d.company.address || "");
-            setCompanyLogoUrl(d.company.logoUrl || "");
+            const currentLogo = d.company.logoUrl ? `/api/company/logo?v=${Date.now()}` : "";
+            setCompanyLogoUrl(currentLogo);
+            setLogoPreview(currentLogo || null);
           }
           setRequireSelfie(Boolean(d.requireSelfie));
           setRequireGps(Boolean(d.requireGps));
@@ -141,6 +153,32 @@ export default function SettingsPage() {
     fetchSettings();
   }, []);
 
+  const handleLogoSelect = async (file: File) => {
+    setLogoError(null);
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("រូបធំពេក សូមជ្រើសរូបតូចជាង 2MB");
+      return;
+    }
+
+    try {
+      const processed = await compressLogoImage(file, 512, 0.85);
+      setLogoDataUrl(processed.dataUrl);
+      setLogoPreview(processed.dataUrl);
+      setLogoAction("UPLOAD");
+    } catch (err: any) {
+      setLogoError(err.message || "មិនអាចដំណើរការរូបភាពបានទេ");
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview(null);
+    setLogoDataUrl(null);
+    setLogoAction("REMOVE");
+    setLogoError(null);
+  };
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -148,6 +186,44 @@ export default function SettingsPage() {
     setErrorMsg(null);
 
     try {
+      // 1. Process Logo upload or delete if changed
+      let updatedLogoUrl = companyLogoUrl;
+      if (logoAction === "UPLOAD" && logoDataUrl) {
+        const logoRes = await fetch("/api/company/logo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: logoDataUrl }),
+        });
+        const logoJson = await logoRes.json();
+        if (!logoJson.success) {
+          setErrorMsg(logoJson.error || "មិនអាចរក្សាទុក Logo បានឡើយ");
+          setSaving(false);
+          return;
+        }
+        updatedLogoUrl = logoJson.logoUrl;
+        setCompanyLogoUrl(updatedLogoUrl);
+        setLogoAction("NONE");
+        window.dispatchEvent(
+          new CustomEvent("company-logo-updated", { detail: updatedLogoUrl })
+        );
+      } else if (logoAction === "REMOVE") {
+        const logoRes = await fetch("/api/company/logo", { method: "DELETE" });
+        const logoJson = await logoRes.json();
+        if (!logoJson.success) {
+          setErrorMsg(logoJson.error || "មិនអាចលុប Logo បានឡើយ");
+          setSaving(false);
+          return;
+        }
+        updatedLogoUrl = "";
+        setCompanyLogoUrl("");
+        setLogoPreview(null);
+        setLogoAction("NONE");
+        window.dispatchEvent(
+          new CustomEvent("company-logo-updated", { detail: null })
+        );
+      }
+
+      // 2. Save Company details and general settings
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,7 +233,6 @@ export default function SettingsPage() {
             phone: companyPhone,
             email: companyEmail,
             address: companyAddress,
-            logoUrl: companyLogoUrl,
           },
           requireSelfie,
           requireGps,
@@ -176,7 +251,7 @@ export default function SettingsPage() {
 
       const json = await res.json();
       if (json.success) {
-        setSuccessMsg(json.message || "បានរក្សាទុកការកំណត់ដោយជោគជ័យ!");
+        setSuccessMsg("រក្សាទុកជោគជ័យ");
         setTimeout(() => setSuccessMsg(null), 4000);
       } else {
         setErrorMsg(json.error || "មិនអាចរក្សាទុកការកំណត់បានឡើយ");
@@ -685,18 +760,110 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div>
+              {/* Logo Upload Dropzone */}
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
-                  <span>តំណភ្ជាប់ Logo (Logo Image URL)</span>
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
+                  <span>រូបសញ្ញាក្រុមហ៊ុន (Company Logo)</span>
                 </label>
+
+                {/* Hidden File Input */}
                 <input
-                  type="text"
-                  placeholder="https://example.com/logo.png"
-                  value={companyLogoUrl}
-                  onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-blue-500"
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleLogoSelect(file);
+                    e.target.value = "";
+                  }}
                 />
+
+                {logoError && (
+                  <div className="mb-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{logoError}</span>
+                  </div>
+                )}
+
+                {logoPreview ? (
+                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+                    {/* Preview Box */}
+                    <div className="w-24 h-24 rounded-2xl bg-slate-900 border border-slate-700/80 p-2 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
+                      <img
+                        src={logoPreview}
+                        alt="Logo Preview"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+
+                    <div className="flex-1 text-center sm:text-left space-y-1">
+                      <div className="font-semibold text-white text-xs">
+                        រូបមើលជាមុន (Logo Preview)
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        {logoAction === "UPLOAD"
+                          ? "បានបង្រួមទំហំរួចរាល់ (Max 512x512) ត្រៀមរក្សាទុក"
+                          : "រូបសញ្ញាបច្ចុប្បន្នដែលកំពុងប្រើប្រាស់ក្នុងប្រព័ន្ធ"}
+                      </p>
+
+                      <div className="flex items-center justify-center sm:justify-start gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => logoInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>ប្តូរ Logo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold flex items-center gap-1.5 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>លុប Logo</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleLogoSelect(file);
+                    }}
+                    onClick={() => logoInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2.5 ${
+                      isDragging
+                        ? "border-blue-500 bg-blue-500/10"
+                        : "border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/80"
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center justify-center gap-1.5">
+                        <span>ជ្រើសរើសរូប Logo</span>
+                        <span className="text-slate-500 font-normal">
+                          ឬ អូសរូបទម្លាក់ទីនេះ (Drag & Drop)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        អនុញ្ញាត: PNG, JPG, WEBP, SVG • ទំហំអតិបរមា 2MB (បង្រួមស្វ័យប្រវត្តិត្រឹម 512x512)
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="sm:col-span-2">

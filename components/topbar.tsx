@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useI18n } from "@/lib/i18n";
+import { useCompany } from "@/lib/company-context";
 import {
   Menu,
   Maximize2,
@@ -27,6 +28,7 @@ interface TopBarProps {
 export function TopBar({ onOpenSidebar }: TopBarProps) {
   const { data: session } = useSession();
   const { t, locale, setLocale } = useI18n();
+  const { company } = useCompany();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -126,9 +128,17 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
           </button>
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-            <Building className="w-4 h-4 text-blue-500" />
+            {company.logoUrl ? (
+              <img
+                src={company.logoUrl}
+                alt={company.name || "Logo"}
+                className="w-5 h-5 rounded object-contain border border-slate-200 dark:border-slate-800"
+              />
+            ) : (
+              <Building className="w-4 h-4 text-blue-500" />
+            )}
             <span className="font-semibold text-slate-900 dark:text-white">
-              {t("companyDefault")}
+              {company.name || t("companyDefault")}
             </span>
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <span className="text-slate-500 dark:text-slate-400">
