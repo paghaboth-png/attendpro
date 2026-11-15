@@ -14,6 +14,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       shiftId,
       pin,
       resetLock,
+      baseSalary,
+      salaryType,
       isActive,
       hiddenInReport,
     } = body;
@@ -30,6 +32,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         ...(shiftId && { shiftId }),
         ...(pin !== undefined && { pin }),
         ...(resetLock && { pinFailedAttempts: 0, pinLockedUntil: null }),
+        ...(baseSalary !== undefined && { baseSalary: parseFloat(baseSalary) }),
+        ...(salaryType !== undefined && { salaryType }),
         ...(isActive !== undefined && { isActive: Boolean(isActive) }),
         ...(hiddenInReport !== undefined && { hiddenInReport: Boolean(hiddenInReport) }),
       },

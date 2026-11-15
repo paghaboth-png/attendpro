@@ -46,6 +46,8 @@ export default function EmployeesPage() {
     positionId: "",
     shiftId: "",
     pin: "1234",
+    baseSalary: 200,
+    salaryType: "MONTHLY",
     email: "",
     password: "",
     isActive: true,
@@ -86,6 +88,8 @@ export default function EmployeesPage() {
       positionId: positions[0]?.id || "",
       shiftId: shifts[0]?.id || "",
       pin: "1234",
+      baseSalary: 200,
+      salaryType: "MONTHLY",
       email: "",
       password: "",
       isActive: true,
@@ -106,6 +110,8 @@ export default function EmployeesPage() {
       positionId: emp.positionId,
       shiftId: emp.shiftId,
       pin: emp.pin || "1234",
+      baseSalary: emp.baseSalary !== undefined ? emp.baseSalary : 200,
+      salaryType: emp.salaryType || "MONTHLY",
       email: emp.user?.email || "",
       password: "",
       isActive: emp.isActive,
@@ -352,11 +358,9 @@ export default function EmployeesPage() {
                     <span>PIN:</span>
                     <strong className="font-mono text-amber-300 font-bold tracking-widest">{emp.pin || "1234"}</strong>
                   </span>
-                  {emp.pinLockedUntil && new Date() < new Date(emp.pinLockedUntil) && (
-                    <span className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-1.5 py-0.5 rounded">
-                      🔒 បានចាក់សោ
-                    </span>
-                  )}
+                  <span className="font-mono text-emerald-400 font-bold text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    ${emp.baseSalary || 200}/{emp.salaryType === 'HOURLY' ? 'ម៉ោង' : emp.salaryType === 'DAILY' ? 'ថ្ងៃ' : 'ខែ'}
+                  </span>
                 </div>
               </div>
 
@@ -537,7 +541,50 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              {/* 4-digit PIN Configuration */}
+              {/* Base Salary & Salary Type */}
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1 text-xs">
+                    ប្រាក់ខែគោល (USD) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      required
+                      value={formData.baseSalary}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          baseSalary: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full pl-7 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                    />
+                    <span className="absolute left-2.5 top-2 text-slate-400 font-bold text-xs">
+                      $
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1 text-xs">
+                    ប្រភេទបើកប្រាក់ *
+                  </label>
+                  <select
+                    value={formData.salaryType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, salaryType: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="MONTHLY">ប្រចាំខែ (Monthly)</option>
+                    <option value="DAILY">ប្រចាំថ្ងៃ (Daily)</option>
+                    <option value="HOURLY">តាមម៉ោង (Hourly)</option>
+                  </select>
+                </div>
+              </div>
               <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
