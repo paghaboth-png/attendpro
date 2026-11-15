@@ -439,6 +439,7 @@ export default function AttendancesPage() {
                   <th className="py-3 px-3.5">កាលបរិច្ឆេទ</th>
                   <th className="py-3 px-3.5">Check In (ចូល)</th>
                   <th className="py-3 px-3.5">Check Out (ចេញ)</th>
+                  <th className="py-3 px-3.5">វិធី (Method)</th>
                   <th className="py-3 px-3.5">ស្ថានភាព</th>
                   <th className="py-3 px-3.5">កំណត់សម្គាល់</th>
                   <th className="py-3 px-3.5 text-right">សកម្មភាព</th>
@@ -513,6 +514,22 @@ export default function AttendancesPage() {
 
                       <td className="py-3 px-3.5 font-mono text-slate-300">
                         {outTime}
+                      </td>
+
+                      <td className="py-3 px-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            att.method === "QR"
+                              ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                              : att.method === "DASHBOARD"
+                              ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
+                              : att.isManual || att.method === "MANUAL"
+                              ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                              : "bg-slate-800 text-slate-300 border-slate-700"
+                          }`}
+                        >
+                          {att.method === "QR" ? "QR Code" : att.method === "DASHBOARD" ? "Dashboard" : att.isManual ? "Manual" : "PIN"}
+                        </span>
                       </td>
 
                       <td className="py-3 px-3.5">
