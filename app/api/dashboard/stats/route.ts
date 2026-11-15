@@ -17,8 +17,8 @@ export async function GET(req: Request) {
     const dateStr = searchParams.get("date") || defaultDateStr;
     const targetDate = new Date(`${dateStr}T00:00:00.000Z`);
 
-    // Day of week: 1 = Monday, ..., 7 = Sunday
-    const dayOfWeek = targetDate.getUTCDay() === 0 ? 7 : targetDate.getUTCDay();
+    // Day of week: 0 = Sunday, 1 = Monday, ..., 6 = Saturday (matches DB "1,2,3,4,5" and "6,0")
+    const dayOfWeek = targetDate.getUTCDay();
 
     // Current time in HH:mm (Phnom Penh)
     const currentHours = String(nowLocal.getUTCHours()).padStart(2, "0");
@@ -152,28 +152,39 @@ export async function GET(req: Request) {
       // If on leave or explicit day off, skip
       if (leaveEmployeeIds.has(emp.id) || dayOffEmployeeIds.has(emp.id)) return;
 
-      const shift = emp.shift;
-      const isWorkDay = shift?.workDays
-        ? shift.workDays.includes(String(dayOfWeek))
-        : true;
+      // Join Date check: days before join date never count as absent
+      if (emp.joinDate) {
+        const jDate = new Date(emp.joinDate);
+        jDate.setHours(0, 0, 0, 0);
+        if (targetDate < jDate) return;
+      }
+
+      const scheduledDaysStr = emp.workingDays || emp.shift?.workDays || "1,2,3,4,5";
+      const scheduledDays = scheduledDaysStr.split(",").map((d: string) => d.trim());
+      const isWorkDay = scheduledDays.includes(String(dayOfWeek));
 
       if (!isWorkDay) {
-        // Off day
+        // Off day per individual schedule
         absentsAndOthersList.push({
           type: "DAYOFF",
           name: emp.name,
           code: emp.code,
           subtitle: `${emp.position?.name || ""} • ${emp.branch?.name || ""}`,
-          note: "ថ្ងៃសម្រាកប្រចាំសប្តាហ៍ (Off Day)",
+          note: "ថ្ងៃសម្រាកប្រចាំសប្តាហ៍ (Day Off)",
           statusColor: "text-blue-400 bg-blue-500/10 border-blue-500/20",
         });
         return;
       }
 
-      if (!shift) return;
+      const shiftStart =
+        emp.shiftScheduleType === "CUSTOM" && emp.customStartTime
+          ? emp.customStartTime
+          : emp.shift?.startTime || "07:00";
 
-      const shiftStart = shift.startTime; // e.g. "07:00"
-      const shiftEnd = shift.endTime;     // e.g. "16:00"
+      const shiftEnd =
+        emp.shiftScheduleType === "CUSTOM" && emp.customEndTime
+          ? emp.customEndTime
+          : emp.shift?.endTime || "16:00";
 
       if (isToday) {
         if (currentTimeStr < shiftStart) {

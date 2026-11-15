@@ -124,7 +124,7 @@ export async function GET(req: Request) {
       a.date.localeCompare(b.date)
     );
 
-    // Per Employee Summary
+    // Per Employee Summary (Calculated per Personal Schedule)
     const employeeSummaries = employees.map((emp) => {
       const empAtts = attendances.filter((a) => a.employeeId === emp.id);
       const empGood = empAtts.filter((a) => a.status === "GOOD").length;
@@ -132,15 +132,45 @@ export async function GET(req: Request) {
       const empOts = overtimes.filter((o) => o.employeeId === emp.id);
       const empOtHours = empOts.reduce((s, o) => s + (o.hours || 0), 0);
 
-      // Leave days
+      const scheduledDaysList = (emp.workingDays || emp.shift?.workDays || "1,2,3,4,5")
+        .split(",")
+        .map((d: string) => d.trim());
+
+      // Count scheduled workdays for this employee between startDate and min(endDate, todayStr)
+      const empJoinStr = emp.joinDate ? new Date(emp.joinDate).toISOString().slice(0, 10) : "2000-01-01";
+      const startD = new Date(`${startDate}T00:00:00.000Z`);
+      const limitDateStr = endDate < todayStr ? endDate : todayStr;
+      const endD = new Date(`${limitDateStr}T00:00:00.000Z`);
+
+      let scheduledWorkDays = 0;
+      const cur = new Date(startD);
+      while (cur <= endD) {
+        const curStr = cur.toISOString().slice(0, 10);
+        const dayOfWeek = String(cur.getUTCDay());
+        if (curStr >= empJoinStr && scheduledDaysList.includes(dayOfWeek)) {
+          scheduledWorkDays++;
+        }
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+
+      // Leave days (only counting scheduled workdays)
       let empLeaveDays = 0;
       leaves
         .filter((l) => l.employeeId === emp.id)
         .forEach((l) => {
           const f = new Date(l.fromDate);
           const t = new Date(l.toDate);
-          empLeaveDays += Math.max(1, Math.round((t.getTime() - f.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+          const curL = new Date(f);
+          while (curL <= t) {
+            const dayOfWeek = String(curL.getUTCDay());
+            if (scheduledDaysList.includes(dayOfWeek)) {
+              empLeaveDays++;
+            }
+            curL.setUTCDate(curL.getUTCDate() + 1);
+          }
         });
+
+      const absentDays = Math.max(0, scheduledWorkDays - (empAtts.length + empLeaveDays));
 
       let empHours = 0;
       empAtts.forEach((a) => {
@@ -160,9 +190,11 @@ export async function GET(req: Request) {
         branchName: emp.branch?.name,
         positionName: emp.position?.name,
         departmentName: emp.department?.name,
+        scheduledWorkDays,
         totalDays: empAtts.length,
         goodDays: empGood,
         lateDays: empLate,
+        absentDays,
         leaveDays: empLeaveDays,
         otHours: empOtHours,
         totalHours: Math.round(empHours * 10) / 10,

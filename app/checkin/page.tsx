@@ -45,6 +45,7 @@ export default function CheckinPage() {
   const [resultMsg, setResultMsg] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"checkin" | "history" | "request">("checkin");
+  const [confirmDayOffModal, setConfirmDayOffModal] = useState<any | null>(null);
 
   // Mobile Request State (Leave & OT)
   const [requestType, setRequestType] = useState<"LEAVE" | "OT">("LEAVE");
@@ -234,7 +235,7 @@ export default function CheckinPage() {
   };
 
   // Handle Check In / Out Submit
-  const handleAttendance = async (action: "CHECK_IN" | "CHECK_OUT") => {
+  const handleAttendance = async (action: "CHECK_IN" | "CHECK_OUT", isConfirmedExtra = false) => {
     setErrorMsg(null);
     setResultMsg(null);
 
@@ -257,11 +258,17 @@ export default function CheckinPage() {
           lng: effectiveLng,
           accuracy: effectiveAcc,
           photoUrl: requireSelfie ? selfiePhoto : null,
+          confirmExtraDay: isConfirmedExtra,
         }),
       });
 
       const json = await res.json();
-      if (json.success) {
+      if (json.requireConfirmation) {
+        setConfirmDayOffModal({
+          message: json.error,
+          dayName: json.dayName,
+        });
+      } else if (json.success) {
         setResultMsg(json);
         fetchEmployee(employeeCode);
       } else {
@@ -280,9 +287,10 @@ export default function CheckinPage() {
   const isCheckedOut = Boolean(todayAtt?.checkOutAt);
 
   const sampleCodes = [
-    { code: "EMP002", name: "ចាន់ ធីតា (Barista)", branch: "ស្វាយរៀង" },
+    { code: "EMP002", name: "ចាន់ ធីតា (Barista - ចន្ទ-សុក្រ)", branch: "ស្វាយរៀង" },
+    { code: "EMP004", name: "កែវ បុប្ផា (Barista - សៅរ៍-អាទិត្យ)", branch: "ស្វាយរៀង" },
+    { code: "EMP008", name: "ឡុង វាសនា (Cashier - សៅរ៍-អាទិត្យ)", branch: "ស្វាយរៀង" },
     { code: "EMP001", name: "សុខ វិសាល (Manager)", branch: "ស្វាយរៀង" },
-    { code: "EMP007", name: "ពេជ្រ រស្មី (Barista)", branch: "ស្វាយរៀង" },
   ];
 
   return (
@@ -882,6 +890,51 @@ export default function CheckinPage() {
             <strong className="text-slate-300">"Add to Home Screen"</strong>
           </div>
         </div>
+
+        {/* Day Off / Non-Working Day Confirmation Modal */}
+        {confirmDayOffModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-bold text-white text-sm">
+                  ថ្ងៃនេះមិនមែនជាថ្ងៃធ្វើការរបស់អ្នក
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {confirmDayOffModal.message}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 text-left space-y-1">
+                <div>• ប្រព័ន្ធនឹងកត់ត្រាវត្តមាននេះជា <strong>"ធ្វើការបន្ថែម / OT"</strong></div>
+                <div>• ទិន្នន័យនឹងបង្ហាញលើ Dashboard និង Report ត្រឹមត្រូវ</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDayOffModal(null)}
+                  className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
+                >
+                  បោះបង់
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmDayOffModal(null);
+                    handleAttendance("CHECK_IN", true);
+                  }}
+                  className="py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shadow-amber-600/30 transition"
+                >
+                  យល់ព្រម Check-in
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

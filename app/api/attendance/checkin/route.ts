@@ -36,6 +36,7 @@ export async function POST(req: Request) {
       lng,
       accuracy,
       photoUrl,
+      confirmExtraDay,
     } = body;
 
     if (!employeeCode) {
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const branch = employee.branch;
+    let activeBranch = employee.branch;
     const shift = employee.shift;
 
     // Check system settings for GPS and Grace period
@@ -140,18 +141,18 @@ export async function POST(req: Request) {
     const isGpsRequired = settingsMap.require_gps !== "false";
     const globalGrace = settingsMap.grace_minutes ? parseInt(settingsMap.grace_minutes) : undefined;
 
-    // 2. Validate GPS Coordinates (if GPS is required)
+    // 2. Validate GPS Coordinates (supporting Main Branch + Allowed Other Branches)
     const userLat = parseFloat(lat);
     const userLng = parseFloat(lng);
     const userAcc = parseFloat(accuracy) || 10;
     let distanceMeters = 0;
 
-    if (!isNaN(userLat) && !isNaN(userLng) && branch.lat && branch.lng) {
+    if (!isNaN(userLat) && !isNaN(userLng) && activeBranch.lat && activeBranch.lng) {
       distanceMeters = calculateDistanceMeters(
         userLat,
         userLng,
-        branch.lat,
-        branch.lng
+        activeBranch.lat,
+        activeBranch.lng
       );
     }
 
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
         );
       }
 
-      // GPS spoofing / accuracy threshold check (> 200m accuracy rejected)
+      // GPS accuracy threshold check (> 200m accuracy rejected)
       if (userAcc > 200) {
         return NextResponse.json(
           {
@@ -174,25 +175,61 @@ export async function POST(req: Request) {
         );
       }
 
-      const allowedRadius = branch.radiusMeters || 100;
-      if (distanceMeters > allowedRadius) {
+      let withinAllowed = distanceMeters <= (activeBranch.radiusMeters || 100);
+
+      // If outside main branch, check allowed other branches (if configured)
+      if (!withinAllowed && employee.otherBranchIds) {
+        const otherIds = employee.otherBranchIds.split(",").map((id) => id.trim()).filter(Boolean);
+        if (otherIds.length > 0) {
+          const otherBranches = await prisma.branch.findMany({
+            where: { id: { in: otherIds }, isActive: true },
+          });
+
+          for (const b of otherBranches) {
+            if (b.lat && b.lng) {
+              const d = calculateDistanceMeters(userLat, userLng, b.lat, b.lng);
+              if (d <= (b.radiusMeters || 100)) {
+                withinAllowed = true;
+                activeBranch = b;
+                distanceMeters = d;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (!withinAllowed) {
+        const allowedRadius = activeBranch.radiusMeters || 100;
         return NextResponse.json(
           {
             success: false,
             distance: distanceMeters,
             allowedRadius,
-            error: `អ្នកនៅចម្ងាយ ${distanceMeters} ម៉ែត្រពីហាង "${branch.name}" (អនុញ្ញាតត្រឹម ${allowedRadius} ម៉ែត្រ)។ សូមចូលទៅក្នុងបរិវេណហាងមុននឹងស្កេន!`,
+            error: `អ្នកនៅចម្ងាយ ${distanceMeters} ម៉ែត្រពីសាខា "${activeBranch.name}" (អនុញ្ញាតត្រឹម ${allowedRadius} ម៉ែត្រ)។ សូមចូលទៅក្នុងបរិវេណហាងមុននឹងស្កេន!`,
           },
           { status: 403 }
         );
       }
     }
 
-    // Current Date & Time in Phnom Penh
+    // Current Date & Time in Phnom Penh (UTC+7)
     const nowUtc = new Date();
     const phnomPenhOffset = 7 * 60 * 60 * 1000;
     const nowLocal = new Date(nowUtc.getTime() + phnomPenhOffset);
     const todayStr = nowLocal.toISOString().slice(0, 10);
+
+    // Current day of week: 0 = Sun, 1 = Mon, 2 = Tue, ..., 6 = Sat
+    const currentDayOfWeek = nowLocal.getUTCDay();
+    const dayNamesKhmer: Record<number, string> = {
+      0: "អាទិត្យ (Sunday)",
+      1: "ចន្ទ (Monday)",
+      2: "អង្គារ (Tuesday)",
+      3: "ពុធ (Wednesday)",
+      4: "ព្រហស្បតិ៍ (Thursday)",
+      5: "សុក្រ (Friday)",
+      6: "សៅរ៍ (Saturday)",
+    };
 
     // Current time in HH:mm
     const currentHours = nowLocal.getUTCHours();
@@ -221,17 +258,42 @@ export async function POST(req: Request) {
         );
       }
 
-      // Calculate LATE status based on shift startTime + graceMinutes
-      let isLate = false;
-      if (shift && shift.startTime) {
-        const [shiftH, shiftM] = shift.startTime.split(":").map(Number);
-        const shiftStartTotalMinutes = shiftH * 60 + shiftM;
-        const graceMinutes =
-          globalGrace !== undefined ? globalGrace : shift.graceMinutes || 15;
+      // 3. Check Scheduled Workdays vs Off Day
+      const scheduledDaysStr = employee.workingDays || shift?.workDays || "1,2,3,4,5";
+      const scheduledDaysList = scheduledDaysStr.split(",").map((d) => d.trim());
+      const isWorkdayToday = scheduledDaysList.includes(String(currentDayOfWeek));
 
-        if (currentTotalMinutes > shiftStartTotalMinutes + graceMinutes) {
-          isLate = true;
-        }
+      if (!isWorkdayToday && !confirmExtraDay) {
+        return NextResponse.json(
+          {
+            success: false,
+            requireConfirmation: true,
+            dayName: dayNamesKhmer[currentDayOfWeek],
+            error: `ថ្ងៃនេះជាថ្ងៃសម្រាក (${dayNamesKhmer[currentDayOfWeek]}) តាមកាលវិភាគការងាររបស់អ្នក។ តើអ្នកពិតជាចង់ស្កេន Check-in (ធ្វើការបន្ថែម/OT) មែនឬទេ?`,
+          },
+          { status: 200 }
+        );
+      }
+
+      // 4. Calculate LATE status based on Personal Schedule IN + Grace
+      const personalStartTime =
+        employee.shiftScheduleType === "CUSTOM" && employee.customStartTime
+          ? employee.customStartTime
+          : shift?.startTime || "07:00";
+
+      const personalGrace =
+        employee.customGraceMinutes !== null && employee.customGraceMinutes !== undefined
+          ? employee.customGraceMinutes
+          : globalGrace !== undefined
+          ? globalGrace
+          : shift?.graceMinutes || 15;
+
+      let isLate = false;
+      const [shiftH, shiftM] = personalStartTime.split(":").map(Number);
+      const shiftStartTotalMinutes = shiftH * 60 + shiftM;
+
+      if (currentTotalMinutes > shiftStartTotalMinutes + personalGrace) {
+        isLate = true;
       }
 
       const attendance = await prisma.attendance.upsert({
@@ -251,7 +313,7 @@ export async function POST(req: Request) {
         },
         create: {
           employeeId: employee.id,
-          branchId: branch.id,
+          branchId: activeBranch.id,
           date: todayStr,
           checkInAt: nowUtc,
           checkInLat: userLat,
@@ -264,15 +326,12 @@ export async function POST(req: Request) {
 
       // Dispatch Telegram Alert if late (non-blocking)
       if (isLate) {
-        const [shiftH, shiftM] = (shift?.startTime || "07:00").split(":").map(Number);
-        const shiftStartTotalMinutes = shiftH * 60 + shiftM;
-        const grace = globalGrace !== undefined ? globalGrace : shift?.graceMinutes || 15;
-        const lateMinutes = Math.max(1, currentTotalMinutes - (shiftStartTotalMinutes + grace));
+        const lateMinutes = Math.max(1, currentTotalMinutes - (shiftStartTotalMinutes + personalGrace));
 
         dispatchTelegramNotification("LATE", {
           name: employee.name,
           code: employee.code,
-          branch: branch.name,
+          branch: activeBranch.name,
           time: `${String(currentHours).padStart(2, "0")}:${String(currentMinutes).padStart(2, "0")}`,
           lateMinutes,
         }).catch(() => {});
@@ -282,15 +341,39 @@ export async function POST(req: Request) {
         success: true,
         action: "CHECK_IN",
         status: attendance.status,
+        branchName: activeBranch.name,
         distance: distanceMeters,
+        isExtraDay: !isWorkdayToday,
         message: isLate
-          ? `Check-in បានជោគជ័យ! ប៉ុន្តែអ្នកមកយឺតលើសម៉ោងកំណត់ (+${shift?.graceMinutes || 15}mn)`
-          : "Check-in បានជោគជ័យទាន់ពេលវេលា (GOOD)! 🎉",
+          ? `Check-in បានជោគជ័យ! ប៉ុន្តែអ្នកមកយឺតលើសម៉ោងកំណត់ (+${personalGrace}mn)`
+          : (!isWorkdayToday
+              ? `Check-in ថ្ងៃបន្ថែម/OT បានជោគជ័យ! 🎉`
+              : `Check-in បានជោគជ័យទាន់ពេលវេលា (GOOD)! 🎉`),
         time: nowLocal.toISOString(),
       });
     } else {
-      // CHECK_OUT
-      if (!existing || !existing.checkInAt) {
+      // CHECK_OUT (With Overnight Shift Support)
+      let targetAttendance = existing;
+
+      // If no attendance today, or already checked out, check yesterday for overnight shift
+      if (!targetAttendance || !targetAttendance.checkInAt || targetAttendance.checkOutAt) {
+        const yesterdayDate = new Date(nowLocal.getTime() - 24 * 60 * 60 * 1000);
+        const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+        const yesterdayAtt = await prisma.attendance.findUnique({
+          where: {
+            employeeId_date: {
+              employeeId: employee.id,
+              date: yesterdayStr,
+            },
+          },
+        });
+
+        if (yesterdayAtt && yesterdayAtt.checkInAt && !yesterdayAtt.checkOutAt) {
+          targetAttendance = yesterdayAtt;
+        }
+      }
+
+      if (!targetAttendance || !targetAttendance.checkInAt) {
         return NextResponse.json(
           {
             success: false,
@@ -300,18 +383,18 @@ export async function POST(req: Request) {
         );
       }
 
-      if (existing.checkOutAt) {
+      if (targetAttendance.checkOutAt) {
         return NextResponse.json(
           {
             success: false,
-            error: "អ្នកបានស្កេន Check-out រួចរាល់ហើយសម្រាប់ថ្ងៃនេះ!",
+            error: "អ្នកបានស្កេន Check-out រួចរាល់ហើយ!",
           },
           { status: 400 }
         );
       }
 
-      const attendance = await prisma.attendance.update({
-        where: { id: existing.id },
+      const updated = await prisma.attendance.update({
+        where: { id: targetAttendance.id },
         data: {
           checkOutAt: nowUtc,
           checkOutLat: userLat,
@@ -324,7 +407,8 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         action: "CHECK_OUT",
-        status: attendance.status,
+        status: updated.status,
+        branchName: activeBranch.name,
         distance: distanceMeters,
         message: "Check-out បានជោគជ័យ! សូមអរគុណសម្រាប់ការបំពេញការងារថ្ងៃនេះ 😊",
         time: nowLocal.toISOString(),

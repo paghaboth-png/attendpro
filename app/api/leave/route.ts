@@ -37,14 +37,19 @@ export async function GET(req: Request) {
           },
           branch: true,
           position: true,
+          shift: true,
         },
       }),
     ]);
 
-    // Calculate balances for each employee
+    // Calculate balances for each employee (deducting only scheduled workdays)
     const balances = employees.map((emp) => {
       const annualLeaveType = leaveTypes.find((t) => t.id === "leave-annual") || { daysAllowed: 18 };
       const sickLeaveType = leaveTypes.find((t) => t.id === "leave-sick") || { daysAllowed: 7 };
+
+      const scheduledDaysList = (emp.workingDays || emp.shift?.workDays || "1,2,3,4,5")
+        .split(",")
+        .map((d: string) => d.trim());
 
       let annualUsed = 0;
       let sickUsed = 0;
@@ -52,7 +57,17 @@ export async function GET(req: Request) {
       emp.leaveRequests.forEach((req) => {
         const from = new Date(req.fromDate);
         const to = new Date(req.toDate);
-        const diffDays = Math.max(1, Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        let scheduledLeaveDays = 0;
+        const cur = new Date(from);
+        while (cur <= to) {
+          const dayOfWeek = String(cur.getUTCDay());
+          if (scheduledDaysList.includes(dayOfWeek)) {
+            scheduledLeaveDays++;
+          }
+          cur.setUTCDate(cur.getUTCDate() + 1);
+        }
+
+        const diffDays = Math.max(1, scheduledLeaveDays);
 
         if (req.typeId === "leave-sick") {
           sickUsed += diffDays;

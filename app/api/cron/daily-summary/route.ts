@@ -23,9 +23,12 @@ export async function GET(req: Request) {
       where: { companyId: company.id, isActive: true },
     });
 
-    const [totalEmployees, attendances, approvedLeaves] = await Promise.all([
-      prisma.employee.count({
+    const todayDayOfWeek = String(nowLocal.getUTCDay()); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+
+    const [allEmployees, attendances, approvedLeaves] = await Promise.all([
+      prisma.employee.findMany({
         where: { companyId: company.id, isActive: true },
+        include: { shift: true },
       }),
       prisma.attendance.findMany({
         where: { date: todayStr },
@@ -39,16 +42,31 @@ export async function GET(req: Request) {
       }),
     ]);
 
+    // Count only employees scheduled to work today
+    const scheduledEmployees = allEmployees.filter((emp) => {
+      // Check join date
+      if (emp.joinDate) {
+        const jDate = new Date(emp.joinDate);
+        jDate.setHours(0, 0, 0, 0);
+        if (nowLocal < jDate) return false;
+      }
+      const scheduledDaysList = (emp.workingDays || emp.shift?.workDays || "1,2,3,4,5")
+        .split(",")
+        .map((d: string) => d.trim());
+      return scheduledDaysList.includes(todayDayOfWeek);
+    });
+
+    const totalScheduled = scheduledEmployees.length;
     const good = attendances.filter((a) => a.status === "GOOD").length;
     const late = attendances.filter((a) => a.status === "LATE").length;
     const present = attendances.length;
     const leave = approvedLeaves.length;
-    const absent = Math.max(0, totalEmployees - (present + leave));
+    const absent = Math.max(0, totalScheduled - (present + leave));
 
     const summaryPayload = {
       date: todayStr,
       branch: branch?.name || "THE ONE COFFEE (ស្វាយរៀង)",
-      total: totalEmployees,
+      total: totalScheduled,
       good,
       late,
       leave,

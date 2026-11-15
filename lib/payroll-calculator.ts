@@ -12,6 +12,8 @@ export interface CalculationInput {
     baseSalary: number;
     salaryType: string; // MONTHLY | DAILY | HOURLY
     workDaysPerMonth?: number;
+    workingDays?: string | null;
+    joinDate?: Date | string | null;
     createdAt: Date;
     isActive: boolean;
     shift?: {
@@ -137,11 +139,11 @@ export function calculateEmployeePayroll(input: CalculationInput): CalculationRe
   const baseSalary = employee.baseSalary || 0;
   const salaryType = employee.salaryType || "MONTHLY";
   const standardWorkDays = employee.workDaysPerMonth || 26;
-  const shiftWorkDaysStr = employee.shift?.workDays || "1,2,3,4,5,6";
+  const shiftWorkDaysStr = employee.workingDays || employee.shift?.workDays || "1,2,3,4,5";
   const holidayDates = holidays.map((h) => new Date(h.date));
 
   // Determine active date boundaries for employee (in case joined mid-period)
-  const empJoinDate = new Date(employee.createdAt);
+  const empJoinDate = employee.joinDate ? new Date(employee.joinDate) : new Date(employee.createdAt);
   const effectiveStart = empJoinDate > startDate ? empJoinDate : startDate;
   const effectiveEnd = endDate;
 
@@ -184,8 +186,9 @@ export function calculateEmployeePayroll(input: CalculationInput): CalculationRe
     }
   }
 
-  // Daily rate for penalties and daily workers
-  const dailyRate = Math.round((baseSalary / (employee.workDaysPerMonth || 26)) * 100) / 100;
+  // Daily rate: based on scheduled workdays in period (or employee standard)
+  const scheduledDays = Math.max(1, periodWorkdays);
+  const dailyRate = Math.round((baseSalary / scheduledDays) * 100) / 100;
   const hourlyRate = Math.round((dailyRate / 8) * 100) / 100;
 
   // Actual attendances in this period

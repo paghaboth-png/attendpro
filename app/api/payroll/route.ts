@@ -396,6 +396,8 @@ export async function POST(req: Request) {
             baseSalary: emp.baseSalary,
             salaryType: emp.salaryType || "MONTHLY",
             workDaysPerMonth: emp.workDaysPerMonth || 26,
+            workingDays: emp.workingDays,
+            joinDate: emp.joinDate,
             createdAt: emp.createdAt,
             isActive: emp.isActive,
             shift: emp.shift,

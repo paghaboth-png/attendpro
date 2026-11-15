@@ -93,7 +93,7 @@ export async function GET(req: Request) {
     for (let day = 1; day <= daysInMonth; day++) {
       const dayDateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       const dayDate = new Date(`${dayDateStr}T00:00:00.000Z`);
-      const dayOfWeek = dayDate.getUTCDay() === 0 ? 7 : dayDate.getUTCDay();
+      const dayOfWeek = dayDate.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
 
       const att = attMap.get(dayDateStr);
 
@@ -132,15 +132,21 @@ export async function GET(req: Request) {
       } else if (holiday) {
         dayStatus = "HOLIDAY";
       } else if (dayDateStr < todayStr) {
-        // If it's a workday (Mon-Sat = 1-6) and past date with no attendance
-        const workDays = (employee.shift?.workDays || "1,2,3,4,5,6")
-          .split(",")
-          .map(Number);
-        if (workDays.includes(dayOfWeek)) {
-          dayStatus = "ABSENT";
-          absentCount++;
-        } else {
+        // If before join date, not absent
+        const isBeforeJoin = employee.joinDate && dayDateStr < new Date(employee.joinDate).toISOString().slice(0, 10);
+        if (isBeforeJoin) {
           dayStatus = "OFF_DAY";
+        } else {
+          // If it's a scheduled workday and past date with no attendance -> ABSENT
+          const scheduledDays = (employee.workingDays || employee.shift?.workDays || "1,2,3,4,5")
+            .split(",")
+            .map((s) => s.trim());
+          if (scheduledDays.includes(String(dayOfWeek))) {
+            dayStatus = "ABSENT";
+            absentCount++;
+          } else {
+            dayStatus = "OFF_DAY";
+          }
         }
       }
 
