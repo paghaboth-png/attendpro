@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { dispatchTelegramNotification } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -260,6 +261,22 @@ export async function POST(req: Request) {
           status: isLate ? "LATE" : "GOOD",
         },
       });
+
+      // Dispatch Telegram Alert if late (non-blocking)
+      if (isLate) {
+        const [shiftH, shiftM] = (shift?.startTime || "07:00").split(":").map(Number);
+        const shiftStartTotalMinutes = shiftH * 60 + shiftM;
+        const grace = globalGrace !== undefined ? globalGrace : shift?.graceMinutes || 15;
+        const lateMinutes = Math.max(1, currentTotalMinutes - (shiftStartTotalMinutes + grace));
+
+        dispatchTelegramNotification("LATE", {
+          name: employee.name,
+          code: employee.code,
+          branch: branch.name,
+          time: `${String(currentHours).padStart(2, "0")}:${String(currentMinutes).padStart(2, "0")}`,
+          lateMinutes,
+        }).catch(() => {});
+      }
 
       return NextResponse.json({
         success: true,

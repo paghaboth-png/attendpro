@@ -19,6 +19,10 @@ import {
   Send,
   HelpCircle,
   Image as ImageIcon,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  X,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -64,6 +68,23 @@ export default function SettingsPage() {
   const [pwSuccessMsg, setPwSuccessMsg] = useState<string | null>(null);
   const [pwErrorMsg, setPwErrorMsg] = useState<string | null>(null);
 
+  // Telegram state (8C-1)
+  const [tgBotToken, setTgBotToken] = useState("");
+  const [tgChatId, setTgChatId] = useState("");
+  const [tgShowToken, setTgShowToken] = useState(false);
+  const [tgIsEnabled, setTgIsEnabled] = useState(false);
+  const [tgNotifyLate, setTgNotifyLate] = useState(false);
+  const [tgNotifyLeave, setTgNotifyLeave] = useState(false);
+  const [tgNotifyDaily, setTgNotifyDaily] = useState(false);
+  const [tgDailySummaryTime, setTgDailySummaryTime] = useState("18:00");
+  const [tgStatus, setTgStatus] = useState<"NOT_CONFIGURED" | "CONNECTED" | "ERROR">("NOT_CONFIGURED");
+  const [tgStatusMsg, setTgStatusMsg] = useState<string | null>(null);
+  const [tgBotInfo, setTgBotInfo] = useState<{ name: string; username: string } | null>(null);
+  const [tgChatInfo, setTgChatInfo] = useState<{ title: string } | null>(null);
+  const [tgSaving, setTgSaving] = useState(false);
+  const [tgTesting, setTgTesting] = useState(false);
+  const [tgChecking, setTgChecking] = useState(false);
+
   const fetchSettings = () => {
     setLoading(true);
     fetch("/api/settings")
@@ -91,6 +112,24 @@ export default function SettingsPage() {
           setTaxEnabled(Boolean(d.taxEnabled));
           setNssfEnabled(Boolean(d.nssfEnabled));
           setAllowEmployeeViewPayslip(Boolean(d.allowEmployeeViewPayslip));
+        }
+      })
+      .catch(() => {});
+
+    // Fetch Telegram Config
+    fetch("/api/settings/telegram")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          const td = json.data;
+          setTgBotToken(td.botTokenMasked || "");
+          setTgChatId(td.chatId || "");
+          setTgIsEnabled(Boolean(td.isEnabled));
+          setTgNotifyLate(Boolean(td.notifyLate));
+          setTgNotifyLeave(Boolean(td.notifyLeave));
+          setTgNotifyDaily(Boolean(td.notifyDaily));
+          setTgDailySummaryTime(td.dailySummaryTime || "18:00");
+          setTgStatus(td.status || "NOT_CONFIGURED");
         }
       })
       .catch(() => {})
@@ -185,6 +224,104 @@ export default function SettingsPage() {
       setPwErrorMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ");
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleSaveTelegram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTgSaving(true);
+    setTgStatusMsg(null);
+
+    try {
+      const res = await fetch("/api/settings/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "SAVE",
+          botToken: tgBotToken,
+          chatId: tgChatId,
+          isEnabled: tgIsEnabled,
+          notifyLate: tgNotifyLate,
+          notifyLeave: tgNotifyLeave,
+          notifyDaily: tgNotifyDaily,
+          dailySummaryTime: tgDailySummaryTime,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSuccessMsg(json.message);
+        if (json.data?.botTokenMasked) {
+          setTgBotToken(json.data.botTokenMasked);
+        }
+        setTgStatus(json.data?.isEnabled && json.data?.chatId ? "CONNECTED" : "NOT_CONFIGURED");
+        setTimeout(() => setSuccessMsg(null), 4000);
+      } else {
+        setErrorMsg(json.error || "មិនអាចរក្សាទុក Telegram បានឡើយ");
+      }
+    } catch {
+      setErrorMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ");
+    } finally {
+      setTgSaving(false);
+    }
+  };
+
+  const handleCheckTelegram = async () => {
+    setTgChecking(true);
+    setTgStatusMsg(null);
+    try {
+      const res = await fetch("/api/settings/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "CHECK_STATUS",
+          botToken: tgBotToken,
+          chatId: tgChatId,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTgStatus("CONNECTED");
+        setTgBotInfo(json.bot);
+        setTgChatInfo(json.chat);
+        setTgStatusMsg(json.message);
+      } else {
+        setTgStatus("ERROR");
+        setTgStatusMsg(json.error);
+      }
+    } catch {
+      setTgStatus("ERROR");
+      setTgStatusMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ Telegram");
+    } finally {
+      setTgChecking(false);
+    }
+  };
+
+  const handleTestTelegram = async () => {
+    setTgTesting(true);
+    setTgStatusMsg(null);
+    try {
+      const res = await fetch("/api/settings/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "TEST",
+          botToken: tgBotToken,
+          chatId: tgChatId,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTgStatus("CONNECTED");
+        setTgStatusMsg(json.message);
+      } else {
+        setTgStatus("ERROR");
+        setTgStatusMsg(json.error);
+      }
+    } catch {
+      setTgStatus("ERROR");
+      setTgStatusMsg("កំហុសក្នុងការតភ្ជាប់");
+    } finally {
+      setTgTesting(false);
     }
   };
 
@@ -910,29 +1047,367 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 5: TELEGRAM (PREVIEW / READY FOR 8C) */}
+      {/* TAB 5: TELEGRAM (8C-1 & 8C-2) */}
       {activeTab === "telegram" && (
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-4">
-          <div className="border-b border-slate-800 pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Send className="w-4 h-4 text-sky-400" />
-              <span>ការតភ្ជាប់ Telegram Bot (Telegram Integration)</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              ការកំណត់ និងការជូនដំណឹងតាម Telegram ត្រូវបានរៀបចំក្នុងដំណាក់កាល 8C-1 & 8C-2
-            </p>
-          </div>
+        <div className="space-y-6">
+          {/* Status Alert / Feedback */}
+          {tgStatusMsg && (
+            <div
+              className={`p-4 rounded-2xl border text-xs flex items-center justify-between gap-2.5 ${
+                tgStatus === "CONNECTED"
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                  : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {tgStatus === "CONNECTED" ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                )}
+                <span>{tgStatusMsg}</span>
+              </div>
+              <button
+                onClick={() => setTgStatusMsg(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
-          <div className="p-6 rounded-xl bg-slate-950/70 border border-slate-800 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center mx-auto">
-              <Send className="w-6 h-6" />
+          {/* Main Telegram Configuration Card */}
+          <form
+            onSubmit={handleSaveTelegram}
+            className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-6"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Send className="w-4 h-4 text-sky-400" />
+                  <span>ការតភ្ជាប់ Telegram Bot (Telegram Bot Settings)</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  ទទួលការជូនដំណឹងភ្លាមៗទៅកាន់ Telegram Group ពេលបុគ្គលិក Check-in យឺត ឬសុំច្បាប់
+                </p>
+              </div>
+
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">ស្ថានភាព៖</span>
+                <span
+                  className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase border flex items-center gap-1.5 ${
+                    tgStatus === "CONNECTED"
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                      : tgStatus === "ERROR"
+                      ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      tgStatus === "CONNECTED"
+                        ? "bg-emerald-400 animate-pulse"
+                        : tgStatus === "ERROR"
+                        ? "bg-rose-400"
+                        : "bg-slate-500"
+                    }`}
+                  />
+                  <span>
+                    {tgStatus === "CONNECTED"
+                      ? "តភ្ជាប់ហើយ (Connected)"
+                      : tgStatus === "ERROR"
+                      ? "មានបញ្ហា (Error)"
+                      : "មិនទាន់កំណត់ (Not Configured)"}
+                  </span>
+                </span>
+              </div>
             </div>
-            <div className="font-bold text-white text-sm">
-              ទំព័រតភ្ជាប់ Telegram កំពុងត្រូវបានដំណើរការក្នុង Phase 8C
+
+            {/* Master Switch: Enable Telegram */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-sky-400" />
+                  <span className="text-xs font-bold text-white">
+                    បើកដំណើរការការជូនដំណឹង Telegram (Master Enable)
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      tgIsEnabled
+                        ? "bg-sky-500/20 text-sky-300 border border-sky-500/30"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                    }`}
+                  >
+                    {tgIsEnabled ? "បើក (ON)" : "បិទ (OFF - លំនាំដើម)"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {tgIsEnabled
+                    ? "ប្រព័ន្ធនឹងផ្ញើសេចក្តីជូនដំណឹងទៅកាន់ Telegram Group តាមជម្រើសខាងក្រោម"
+                    : "បិទការផ្ញើទាំងអស់ជាបណ្តោះអាសន្ន (គ្មានការហៅទៅកាន់ Telegram API ឡើយ)"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={tgIsEnabled}
+                onClick={() => setTgIsEnabled(!tgIsEnabled)}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  tgIsEnabled ? "bg-sky-600" : "bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    tgIsEnabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              ប្រព័ន្ធត្រូវបានរៀបចំយ៉ាងមានសុវត្ថិភាពខ្ពស់ មិនបញ្ចេញ Token ទៅកាន់ Browser ឡើយ និងគាំទ្រការផ្ញើសារសាកល្បងដោយស្វ័យប្រវត្តិ។
-            </p>
+
+            {/* Inputs: Bot Token & Chat ID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              {/* Bot Token Input */}
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1.5 flex items-center justify-between">
+                  <span>លេខសម្ងាត់ Bot Token (Bot Token) *</span>
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    (រក្សាទុក Encrypted)
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={tgShowToken ? "text" : "password"}
+                    value={tgBotToken}
+                    onChange={(e) => setTgBotToken(e.target.value)}
+                    placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-sky-500 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTgShowToken(!tgShowToken)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                  >
+                    {tgShowToken ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  សុវត្ថិភាពខ្ពស់៖ Token ត្រូវបាន Encrypt ក្នុង Database មិនបង្ហាញពេញលើ Browser ឡើយ
+                </p>
+              </div>
+
+              {/* Group Chat ID Input */}
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1.5 flex items-center justify-between">
+                  <span>Group Chat ID (អត្តសញ្ញាណ Group) *</span>
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    (ឧ. -1001234567890)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={tgChatId}
+                  onChange={(e) => setTgChatId(e.target.value)}
+                  placeholder="-1001234567890 ឬ -987654321"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-sky-500 transition"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Chat ID របស់ Telegram Group (Supergroup ចាប់ផ្តើមដោយលេខដក <code>-100...</code>)
+                </p>
+              </div>
+            </div>
+
+            {/* Notification Event Switches (All default OFF) */}
+            <div className="pt-2 border-t border-slate-800 space-y-3">
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-sky-400" />
+                <span>ប្រភេទនៃការជូនដំណឹង (Notification Triggers - ទុក OFF ជាមុន)</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Trigger 1: Late checkin */}
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-white text-xs">Check-in យឺត</div>
+                    <div className="text-[10px] text-slate-500">
+                      ជូនដំណឹងពេលបុគ្គលិកស្កេនយឺត
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tgNotifyLate}
+                    onClick={() => setTgNotifyLate(!tgNotifyLate)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      tgNotifyLate ? "bg-sky-600" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        tgNotifyLate ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Trigger 2: Leave & OT requests */}
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-white text-xs">សុំច្បាប់ / OT ថ្មី</div>
+                    <div className="text-[10px] text-slate-500">
+                      ជូនដំណឹងពេលមានពាក្យស្នើសុំថ្មី
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tgNotifyLeave}
+                    onClick={() => setTgNotifyLeave(!tgNotifyLeave)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      tgNotifyLeave ? "bg-sky-600" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        tgNotifyLeave ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Trigger 3: Daily Summary */}
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-white text-xs">សរុបប្រចាំថ្ងៃ</div>
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <span>ម៉ោង៖</span>
+                      <input
+                        type="time"
+                        value={tgDailySummaryTime}
+                        onChange={(e) => setTgDailySummaryTime(e.target.value)}
+                        className="bg-slate-900 border border-slate-700 rounded px-1 text-[10px] text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tgNotifyDaily}
+                    onClick={() => setTgNotifyDaily(!tgNotifyDaily)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      tgNotifyDaily ? "bg-sky-600" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        tgNotifyDaily ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons: Check Status, Send Test, Save */}
+            <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleCheckTelegram}
+                  disabled={tgChecking}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${tgChecking ? "animate-spin" : ""}`} />
+                  <span>{tgChecking ? "កំពុងពិនិត្យ..." : "ពិនិត្យស្ថានភាព"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestTelegram}
+                  disabled={tgTesting}
+                  className="px-4 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-600 text-white font-semibold text-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <Send className={`w-3.5 h-3.5 ${tgTesting ? "animate-spin" : ""}`} />
+                  <span>{tgTesting ? "កំពុងផ្ញើ..." : "ផ្ញើសារសាកល្បង"}</span>
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={tgSaving}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{tgSaving ? "កំពុងរក្សាទុក..." : "រក្សាទុកការកំណត់ Telegram"}</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Setup Guide in Khmer (Step-by-Step) */}
+          <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-4">
+            <div className="border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-sky-400" />
+                <span>ការណែនាំខ្លីៗ ពីរបៀបបង្កើត Telegram Bot និងស្វែងរក Group Chat ID</span>
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              {/* Step 1 */}
+              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+                <div className="font-bold text-white flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px] font-black">
+                    1
+                  </span>
+                  <span>បង្កើត Bot លើ Telegram</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  បើក Telegram ស្វែងរក <b>@BotFather</b> រួចផ្ញើពាក្យ <code>/newbot</code>។ ដាក់ឈ្មោះ Bot និង Username (ឧ. <code>MyCafeAttendBot</code>)។ លោកអ្នកនឹងទទួលបាន <b>HTTP API Token</b> មួយជួរវែង។
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+                <div className="font-bold text-white flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px] font-black">
+                    2
+                  </span>
+                  <span>Add Bot ចូលក្នុង Group</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  បង្កើត Telegram Group សម្រាប់ម្ចាស់ហាង/មេការ រួច <b>Add Bot ដែលទើបបង្កើតនោះចូលក្នុង Group</b>។ កុំភ្លេចកំណត់សិទ្ធិ Bot ជា <b>Administrator</b> ដើម្បីឱ្យ Bot អាចផ្ញើសារបាន។
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+                <div className="font-bold text-white flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-[10px] font-black">
+                    3
+                  </span>
+                  <span>ស្វែងរក Group Chat ID</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Add bot ជំនួយការដូចជា <b>@userinfobot</b> ឬ <b>@myidbot</b> ចូលក្នុង Group វានឹងប្រាប់ Chat ID ភ្លាមៗ (ឧ. <code>-1001234567890</code>)។ បន្ទាប់មកចម្លងយកមកដាក់ក្នុងប្រអប់ខាងលើ។
+                </p>
+              </div>
+            </div>
+
+            {/* Vercel Hobby Cron explanation & free solutions */}
+            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs text-slate-400 space-y-1.5">
+              <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span>ចំណាំអំពីការកំណត់ពេលសរុបប្រចាំថ្ងៃ (Daily Cron on Vercel Hobby)</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                កញ្ចប់ Vercel Hobby (ឥតគិតថ្លៃ) គាំទ្រ Scheduled Cron ១ ដងក្នុងមួយថ្ងៃ (គិតតាមម៉ោង UTC)។ ដើម្បីឱ្យការផ្ញើសារសរុបប្រចាំថ្ងៃដំណើរការទៀងទាត់ម៉ោង ១៨:០០ ជារៀងរាល់ថ្ងៃ លោកអ្នកអាចប្រើប្រាស់សេវាឥតគិតថ្លៃដូចជា <b>cron-job.org</b> ឬ <b>GitHub Actions</b> ដោយគ្រាន់តែហៅទៅកាន់ Webhook របស់ AttendPro។
+              </p>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { dispatchTelegramNotification } from "@/lib/telegram";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -151,6 +152,15 @@ export async function POST(req: Request) {
           link: "/leave",
         },
       });
+
+      // Dispatch Telegram notification (non-blocking)
+      dispatchTelegramNotification("LEAVE", {
+        name: employee.name,
+        code: employee.code,
+        date: `${fromDate} ដល់ ${toDate}`,
+        leaveType: leaveRequest.type.name,
+        reason: reason || "",
+      }).catch(() => {});
     } catch {}
 
     return NextResponse.json({
