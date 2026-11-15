@@ -128,9 +128,12 @@ export default function LoginPage() {
                 <label className="block text-xs font-semibold text-slate-300">
                   {t("passwordLabel")}
                 </label>
-                <span className="text-[11px] text-slate-500 hover:text-slate-400 cursor-pointer">
+                <a
+                  href="/forgot-password"
+                  className="text-[11px] text-blue-400 hover:text-blue-300 transition"
+                >
                   {t("forgotPassword")}
-                </span>
+                </a>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />

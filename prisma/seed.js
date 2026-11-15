@@ -262,6 +262,8 @@ async function main() {
       positionId: posManager.id,
       shiftId: shiftMorning.id,
       userId: managerUser.id,
+      baseSalary: 350,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP002',
@@ -272,6 +274,8 @@ async function main() {
       positionId: posBarista.id,
       shiftId: shiftMorning.id,
       userId: employeeUser.id,
+      baseSalary: 260,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP003',
@@ -281,6 +285,8 @@ async function main() {
       departmentId: dept1.id,
       positionId: posCashier.id,
       shiftId: shiftMorning.id,
+      baseSalary: 220,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP004',
@@ -290,6 +296,8 @@ async function main() {
       departmentId: dept1.id,
       positionId: posBarista.id,
       shiftId: shiftAfternoon.id,
+      baseSalary: 250,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP005',
@@ -299,6 +307,8 @@ async function main() {
       departmentId: dept1.id,
       positionId: posCashier.id,
       shiftId: shiftAfternoon.id,
+      baseSalary: 220,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP006',
@@ -308,6 +318,8 @@ async function main() {
       departmentId: dept3.id,
       positionId: posManager.id,
       shiftId: shiftMorning.id,
+      baseSalary: 350,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP007',
@@ -317,6 +329,8 @@ async function main() {
       departmentId: dept1.id,
       positionId: posBarista.id,
       shiftId: shiftMorning.id,
+      baseSalary: 250,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP008',
@@ -326,6 +340,8 @@ async function main() {
       departmentId: dept1.id,
       positionId: posCashier.id,
       shiftId: shiftMorning.id,
+      baseSalary: 220,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP009',
@@ -335,6 +351,8 @@ async function main() {
       departmentId: dept2.id,
       positionId: posBarista.id,
       shiftId: shiftAfternoon.id,
+      baseSalary: 250,
+      salaryType: 'MONTHLY',
     },
     {
       code: 'EMP010',
@@ -344,6 +362,8 @@ async function main() {
       departmentId: dept1.id,
       positionId: posCashier.id,
       shiftId: shiftAfternoon.id,
+      baseSalary: 220,
+      salaryType: 'MONTHLY',
     },
   ];
 

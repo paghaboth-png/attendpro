@@ -48,6 +48,8 @@ model Company {
   shifts      Shift[]
   holidays    Holiday[]
   settings    Setting[]
+  payrolls    Payroll[]
+  telegramConfig TelegramConfig?
 }
 
 model Branch {
@@ -65,6 +67,7 @@ model Branch {
   employees    Employee[]
   attendances  Attendance[]
   holidays     Holiday[]
+  payrolls     Payroll[]
 }
 
 model Department {
@@ -97,6 +100,8 @@ model User {
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  resetToken   String?
+  resetTokenExpiry DateTime?
   employee     Employee?
   auditLogs    AuditLog[]
 }
@@ -138,12 +143,15 @@ model Employee {
   pin            String?         @default("1234")
   pinFailedAttempts Int          @default(0)
   pinLockedUntil    DateTime?
+  baseSalary     Float           @default(200) // USD
+  salaryType     String          @default("MONTHLY") // MONTHLY, DAILY, HOURLY
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   attendances    Attendance[]
   leaveRequests  LeaveRequest[]
   overtimes      Overtime[]
   dayOffs        DayOff[]
+  payrollItems   PayrollItem[]
 }
 
 model Attendance {
@@ -257,4 +265,68 @@ model Setting {
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Payroll {
+  id          String        @id @default(cuid())
+  companyId   String
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  month       String        // YYYY-MM
+  isFinalized Boolean       @default(false)
+  finalizedAt DateTime?
+  finalizedBy String?
+  totalAmount Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  items       PayrollItem[]
+
+  @@unique([companyId, month, branchId])
+}
+
+model PayrollItem {
+  id            String    @id @default(cuid())
+  payrollId     String
+  payroll       Payroll   @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  baseSalary    Float     @default(0)
+  salaryType    String    @default("MONTHLY")
+  workDays      Int       @default(26)
+  actualDays    Int       @default(0)
+  lateCount     Int       @default(0)
+  latePenalty   Float     @default(0)
+  absentDays    Int       @default(0)
+  absentPenalty Float     @default(0)
+  otHours       Float     @default(0)
+  otPay         Float     @default(0)
+  allowance     Float     @default(0)
+  bonus         Float     @default(0)
+  deduction     Float     @default(0)
+  grossPay      Float     @default(0)
+  taxDeduction  Float     @default(0)
+  nssfDeduction Float     @default(0)
+  netPay        Float     @default(0)
+  note          String?
+  isEdited      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([payrollId, employeeId])
+}
+
+model TelegramConfig {
+  id                 String   @id @default(cuid())
+  companyId          String   @unique
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  botTokenEncrypted  String?
+  chatId             String?
+  isEnabled          Boolean  @default(false)
+  notifyLate         Boolean  @default(false)
+  notifyLeave        Boolean  @default(false)
+  notifyDaily        Boolean  @default(false)
+  dailySummaryTime   String   @default("18:00")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }

@@ -16,6 +16,8 @@ import {
   ClockAlert,
   BarChart3,
   Settings,
+  ShieldCheck,
+  DollarSign,
   ChevronDown,
   Search,
   Coffee,
@@ -79,12 +81,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       groupTitle: t("navReports"),
       items: [
         { title: t("navReports"), href: "/reports", icon: BarChart3 },
+        { title: "ប្រាក់បៀវត្ស (Payroll)", href: "/payroll", icon: DollarSign },
       ],
     },
     {
       groupTitle: t("navSettings"),
       items: [
         { title: t("navSettings"), href: "/settings", icon: Settings },
+        { title: "កំណត់ហេតុ (Audit Logs)", href: "/audit-logs", icon: ShieldCheck },
       ],
     },
   ];

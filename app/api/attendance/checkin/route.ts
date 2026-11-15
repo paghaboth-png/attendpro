@@ -131,48 +131,60 @@ export async function POST(req: Request) {
     const branch = employee.branch;
     const shift = employee.shift;
 
-    // 2. Validate GPS Coordinates
+    // Check system settings for GPS and Grace period
+    const settings = await prisma.setting.findMany({
+      where: { key: { in: ["require_gps", "grace_minutes"] } },
+    });
+    const settingsMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+    const isGpsRequired = settingsMap.require_gps !== "false";
+    const globalGrace = settingsMap.grace_minutes ? parseInt(settingsMap.grace_minutes) : undefined;
+
+    // 2. Validate GPS Coordinates (if GPS is required)
     const userLat = parseFloat(lat);
     const userLng = parseFloat(lng);
     const userAcc = parseFloat(accuracy) || 10;
+    let distanceMeters = 0;
 
-    if (isNaN(userLat) || isNaN(userLng)) {
-      return NextResponse.json(
-        { success: false, error: "មិនអាចចាប់ទីតាំង GPS បានឡើយ សូមបើក Location" },
-        { status: 400 }
+    if (!isNaN(userLat) && !isNaN(userLng) && branch.lat && branch.lng) {
+      distanceMeters = calculateDistanceMeters(
+        userLat,
+        userLng,
+        branch.lat,
+        branch.lng
       );
     }
 
-    // GPS spoofing / accuracy threshold check (> 200m accuracy rejected)
-    if (userAcc > 200) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `សញ្ញា GPS ខ្សោយពេក (ភាពត្រឹមត្រូវ ${Math.round(userAcc)}m)។ សូមទៅកាន់ទីវាល ឬបើក Wi-Fi/Location សាជាថ្មី`,
-        },
-        { status: 400 }
-      );
-    }
+    if (isGpsRequired) {
+      if (isNaN(userLat) || isNaN(userLng)) {
+        return NextResponse.json(
+          { success: false, error: "មិនអាចចាប់ទីតាំង GPS បានឡើយ សូមបើក Location" },
+          { status: 400 }
+        );
+      }
 
-    // Calculate distance to employee's assigned branch
-    const distanceMeters = calculateDistanceMeters(
-      userLat,
-      userLng,
-      branch.lat,
-      branch.lng
-    );
+      // GPS spoofing / accuracy threshold check (> 200m accuracy rejected)
+      if (userAcc > 200) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `សញ្ញា GPS ខ្សោយពេក (ភាពត្រឹមត្រូវ ${Math.round(userAcc)}m)។ សូមទៅកាន់ទីវាល ឬបើក Wi-Fi/Location សាជាថ្មី`,
+          },
+          { status: 400 }
+        );
+      }
 
-    const allowedRadius = branch.radiusMeters || 100;
-    if (distanceMeters > allowedRadius) {
-      return NextResponse.json(
-        {
-          success: false,
-          distance: distanceMeters,
-          allowedRadius,
-          error: `អ្នកនៅចម្ងាយ ${distanceMeters} ម៉ែត្រពីហាង "${branch.name}" (អនុញ្ញាតត្រឹម ${allowedRadius} ម៉ែត្រ)។ សូមចូលទៅក្នុងបរិវេណហាងមុននឹងស្កេន!`,
-        },
-        { status: 403 }
-      );
+      const allowedRadius = branch.radiusMeters || 100;
+      if (distanceMeters > allowedRadius) {
+        return NextResponse.json(
+          {
+            success: false,
+            distance: distanceMeters,
+            allowedRadius,
+            error: `អ្នកនៅចម្ងាយ ${distanceMeters} ម៉ែត្រពីហាង "${branch.name}" (អនុញ្ញាតត្រឹម ${allowedRadius} ម៉ែត្រ)។ សូមចូលទៅក្នុងបរិវេណហាងមុននឹងស្កេន!`,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Current Date & Time in Phnom Penh
@@ -213,7 +225,8 @@ export async function POST(req: Request) {
       if (shift && shift.startTime) {
         const [shiftH, shiftM] = shift.startTime.split(":").map(Number);
         const shiftStartTotalMinutes = shiftH * 60 + shiftM;
-        const graceMinutes = shift.graceMinutes || 15;
+        const graceMinutes =
+          globalGrace !== undefined ? globalGrace : shift.graceMinutes || 15;
 
         if (currentTotalMinutes > shiftStartTotalMinutes + graceMinutes) {
           isLate = true;

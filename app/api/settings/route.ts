@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Default settings
+// Default settings map
 const DEFAULT_SETTINGS: Record<string, string> = {
-  require_selfie: "false", // OFF by default as requested
+  require_selfie: "false", // OFF by default
   require_gps: "true",     // ON by default
   default_radius: "100",   // 100 meters
   grace_minutes: "15",     // 15 minutes
+  default_language: "km",  // Khmer by default
+  // Payroll configurations
+  late_penalty_type: "FIXED", // FIXED or PER_MINUTE
+  late_penalty_amount: "1.0", // $1 per late
+  absent_penalty_rate: "1.0", // 1 day wage per unexcused absence
+  overtime_multiplier: "1.5", // 1.5x regular hourly wage
+  tax_enabled: "false",       // OFF by default as selected by user
+  nssf_enabled: "false",      // OFF by default as selected by user
+  allow_employee_view_payslip: "false",
 };
 
 export async function GET() {
@@ -18,10 +29,25 @@ export async function GET() {
       return NextResponse.json({
         success: true,
         data: {
+          company: {
+            name: "TheDemo Coffee",
+            phone: "012999001",
+            email: "info@demo.com",
+            address: "ខេត្តស្វាយរៀង",
+            logoUrl: "",
+          },
           requireSelfie: false,
           requireGps: true,
           defaultRadius: 100,
           graceMinutes: 15,
+          defaultLanguage: "km",
+          latePenaltyType: "FIXED",
+          latePenaltyAmount: 1.0,
+          absentPenaltyRate: 1.0,
+          overtimeMultiplier: 1.5,
+          taxEnabled: false,
+          nssfEnabled: false,
+          allowEmployeeViewPayslip: false,
         },
       });
     }
@@ -38,10 +64,27 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
+        company: {
+          id: company.id,
+          name: company.name,
+          phone: company.phone || "",
+          email: company.email || "",
+          address: company.address || "",
+          logoUrl: company.logoUrl || "",
+        },
         requireSelfie: settingsMap.require_selfie === "true",
         requireGps: settingsMap.require_gps !== "false",
         defaultRadius: parseInt(settingsMap.default_radius) || 100,
         graceMinutes: parseInt(settingsMap.grace_minutes) || 15,
+        defaultLanguage: settingsMap.default_language || "km",
+        // Payroll settings
+        latePenaltyType: settingsMap.late_penalty_type || "FIXED",
+        latePenaltyAmount: parseFloat(settingsMap.late_penalty_amount) || 1.0,
+        absentPenaltyRate: parseFloat(settingsMap.absent_penalty_rate) || 1.0,
+        overtimeMultiplier: parseFloat(settingsMap.overtime_multiplier) || 1.5,
+        taxEnabled: settingsMap.tax_enabled === "true",
+        nssfEnabled: settingsMap.nssf_enabled === "true",
+        allowEmployeeViewPayslip: settingsMap.allow_employee_view_payslip === "true",
       },
     });
   } catch (error: any) {
@@ -54,27 +97,89 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { requireSelfie, requireGps, defaultRadius, graceMinutes } = body;
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    const userRole = (session?.user as any)?.role;
 
-    const company = await prisma.company.findFirst();
-    if (!company) {
+    if (!session || (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN")) {
       return NextResponse.json(
-        { success: false, error: "Company not found" },
-        { status: 404 }
+        { success: false, error: "គ្មានសិទ្ធិកែប្រែការកំណត់ឡើយ (Unauthorized)" },
+        { status: 403 }
       );
     }
 
-    const updates = [
-      { key: "require_selfie", value: String(Boolean(requireSelfie)) },
-      { key: "require_gps", value: String(Boolean(requireGps)) },
-      ...(defaultRadius !== undefined
-        ? [{ key: "default_radius", value: String(defaultRadius) }]
-        : []),
-      ...(graceMinutes !== undefined
-        ? [{ key: "grace_minutes", value: String(graceMinutes) }]
-        : []),
-    ];
+    const body = await req.json();
+    const {
+      company: companyInput,
+      requireSelfie,
+      requireGps,
+      defaultRadius,
+      graceMinutes,
+      defaultLanguage,
+      // Payroll settings
+      latePenaltyType,
+      latePenaltyAmount,
+      absentPenaltyRate,
+      overtimeMultiplier,
+      taxEnabled,
+      nssfEnabled,
+      allowEmployeeViewPayslip,
+    } = body;
+
+    let company = await prisma.company.findFirst();
+    if (!company) {
+      company = await prisma.company.create({
+        data: {
+          name: "TheDemo Coffee",
+        },
+      });
+    }
+
+    // Update Company info if provided
+    if (companyInput) {
+      await prisma.company.update({
+        where: { id: company.id },
+        data: {
+          name: companyInput.name || company.name,
+          phone: companyInput.phone ?? company.phone,
+          email: companyInput.email ?? company.email,
+          address: companyInput.address ?? company.address,
+          logoUrl: companyInput.logoUrl ?? company.logoUrl,
+        },
+      });
+    }
+
+    const updates: { key: string; value: string }[] = [];
+
+    if (requireSelfie !== undefined)
+      updates.push({ key: "require_selfie", value: String(Boolean(requireSelfie)) });
+    if (requireGps !== undefined)
+      updates.push({ key: "require_gps", value: String(Boolean(requireGps)) });
+    if (defaultRadius !== undefined)
+      updates.push({ key: "default_radius", value: String(defaultRadius) });
+    if (graceMinutes !== undefined)
+      updates.push({ key: "grace_minutes", value: String(graceMinutes) });
+    if (defaultLanguage !== undefined)
+      updates.push({ key: "default_language", value: String(defaultLanguage) });
+
+    // Payroll updates
+    if (latePenaltyType !== undefined)
+      updates.push({ key: "late_penalty_type", value: String(latePenaltyType) });
+    if (latePenaltyAmount !== undefined)
+      updates.push({ key: "late_penalty_amount", value: String(latePenaltyAmount) });
+    if (absentPenaltyRate !== undefined)
+      updates.push({ key: "absent_penalty_rate", value: String(absentPenaltyRate) });
+    if (overtimeMultiplier !== undefined)
+      updates.push({ key: "overtime_multiplier", value: String(overtimeMultiplier) });
+    if (taxEnabled !== undefined)
+      updates.push({ key: "tax_enabled", value: String(Boolean(taxEnabled)) });
+    if (nssfEnabled !== undefined)
+      updates.push({ key: "nssf_enabled", value: String(Boolean(nssfEnabled)) });
+    if (allowEmployeeViewPayslip !== undefined)
+      updates.push({
+        key: "allow_employee_view_payslip",
+        value: String(Boolean(allowEmployeeViewPayslip)),
+      });
 
     for (const item of updates) {
       await prisma.setting.upsert({
@@ -88,17 +193,22 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "បានរក្សាទុកការកំណត់ដោយជោគជ័យ",
+    // Write audit log
+    await prisma.auditLog.create({
       data: {
-        requireSelfie: Boolean(requireSelfie),
-        requireGps: Boolean(requireGps),
-        defaultRadius: parseInt(defaultRadius) || 100,
-        graceMinutes: parseInt(graceMinutes) || 15,
+        userId: userId || null,
+        action: "SETTING_CHANGE",
+        entity: "Setting",
+        details: `បានកែប្រែការកំណត់ប្រព័ន្ធ (${updates.map((u) => u.key).join(", ")})`,
       },
     });
+
+    return NextResponse.json({
+      success: true,
+      message: "បានរក្សាទុកការកំណត់ដោយជោគជ័យ!",
+    });
   } catch (error: any) {
+    console.error("Settings POST error:", error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }
