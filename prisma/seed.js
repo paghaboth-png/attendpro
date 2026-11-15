@@ -350,9 +350,17 @@ async function main() {
   for (const emp of sampleEmployees) {
     await prisma.employee.upsert({
       where: { code: emp.code },
-      update: emp,
+      update: {
+        ...emp,
+        pin: '1234',
+        pinFailedAttempts: 0,
+        pinLockedUntil: null,
+      },
       create: {
         ...emp,
+        pin: '1234',
+        pinFailedAttempts: 0,
+        pinLockedUntil: null,
         companyId: company.id,
         isActive: true,
         hiddenInReport: false,

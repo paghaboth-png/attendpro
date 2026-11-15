@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       employeeCode,
+      pin,
       action, // "CHECK_IN" or "CHECK_OUT"
       lat,
       lng,
@@ -57,6 +58,74 @@ export async function POST(req: Request) {
         { success: false, error: "រកមិនឃើញបុគ្គលិក ឬគណនីត្រូវបានផ្អាក" },
         { status: 404 }
       );
+    }
+
+    // 2. Security PIN & Rate Limiting Check
+    const nowTime = new Date();
+    if (employee.pinLockedUntil && nowTime < new Date(employee.pinLockedUntil)) {
+      const remainingMinutes = Math.ceil(
+        (new Date(employee.pinLockedUntil).getTime() - nowTime.getTime()) / (60 * 1000)
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          isLocked: true,
+          remainingMinutes,
+          error: `គណនីនេះត្រូវបានចាក់សោសុវត្ថិភាព ${remainingMinutes} នាទីទៀត ដោយសារវាយ PIN ខុសលើសពី ៥ ដង។ សូមទាក់ទង Admin ឬរង់ចាំដល់ផុតម៉ោងចាក់សោ!`,
+        },
+        { status: 403 }
+      );
+    }
+
+    const expectedPin = employee.pin || "1234";
+    const enteredPin = (pin || "").trim();
+
+    if (!enteredPin || enteredPin !== expectedPin) {
+      const attempts = (employee.pinFailedAttempts || 0) + 1;
+      if (attempts >= 5) {
+        const pinLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lockout
+        await prisma.employee.update({
+          where: { id: employee.id },
+          data: {
+            pinFailedAttempts: attempts,
+            pinLockedUntil,
+          },
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            isLocked: true,
+            remainingMinutes: 15,
+            error:
+              "អ្នកបានវាយ PIN ខុសចំនួន ៥ ដង! គណនីត្រូវបានចាក់សោសុវត្ថិភាពរយៈពេល ១៥ នាទី។ សូមទាក់ទង Admin ឬរង់ចាំមុននឹងសាកល្បងម្តងទៀត។",
+          },
+          { status: 403 }
+        );
+      } else {
+        await prisma.employee.update({
+          where: { id: employee.id },
+          data: { pinFailedAttempts: attempts },
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            attempts,
+            error: `លេខកូដសម្ងាត់ PIN មិនត្រឹមត្រូវ! (ខុសលើកទី ${attempts}/5 ដង - ខុស ៥ ដងចាក់សោ ១៥ នាទី)`,
+          },
+          { status: 401 }
+        );
+      }
+    }
+
+    // PIN is correct - reset failed attempts and unlock if needed
+    if (employee.pinFailedAttempts > 0 || employee.pinLockedUntil) {
+      await prisma.employee.update({
+        where: { id: employee.id },
+        data: {
+          pinFailedAttempts: 0,
+          pinLockedUntil: null,
+        },
+      });
     }
 
     const branch = employee.branch;

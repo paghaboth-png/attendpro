@@ -15,6 +15,7 @@ import {
   X,
   AlertCircle,
   CheckCircle,
+  Lock,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
@@ -44,6 +45,7 @@ export default function EmployeesPage() {
     departmentId: "",
     positionId: "",
     shiftId: "",
+    pin: "1234",
     email: "",
     password: "",
     isActive: true,
@@ -83,6 +85,7 @@ export default function EmployeesPage() {
       departmentId: departments[0]?.id || "",
       positionId: positions[0]?.id || "",
       shiftId: shifts[0]?.id || "",
+      pin: "1234",
       email: "",
       password: "",
       isActive: true,
@@ -102,6 +105,7 @@ export default function EmployeesPage() {
       departmentId: emp.departmentId,
       positionId: emp.positionId,
       shiftId: emp.shiftId,
+      pin: emp.pin || "1234",
       email: emp.user?.email || "",
       password: "",
       isActive: emp.isActive,
@@ -341,6 +345,19 @@ export default function EmployeesPage() {
                     <span className="font-mono">{emp.user.email}</span>
                   </div>
                 )}
+
+                <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-800/60">
+                  <span className="flex items-center gap-1.5 text-slate-400">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>PIN:</span>
+                    <strong className="font-mono text-amber-300 font-bold tracking-widest">{emp.pin || "1234"}</strong>
+                  </span>
+                  {emp.pinLockedUntil && new Date() < new Date(emp.pinLockedUntil) && (
+                    <span className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-1.5 py-0.5 rounded">
+                      🔒 បានចាក់សោ
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-[11px] pt-1">
@@ -517,6 +534,44 @@ export default function EmployeesPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* 4-digit PIN Configuration */}
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>លេខកូដសម្ងាត់ Check-in (PIN ៤ ខ្ទង់) *</span>
+                  </label>
+                  {editingEmp && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, pin: "1234" })}
+                      className="text-[10px] text-amber-400 hover:underline font-mono"
+                    >
+                      Reset ទៅ 1234
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    required
+                    value={formData.pin}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pin: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
+                    placeholder="1234"
+                    className="w-28 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono font-bold tracking-widest text-center focus:border-amber-500 focus:outline-none"
+                  />
+                  <span className="text-[11px] text-slate-400">
+                    បុគ្គលិកត្រូវវាយកូដនេះពេល Check-in
+                  </span>
                 </div>
               </div>
 

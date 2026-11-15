@@ -135,6 +135,9 @@ model Employee {
   shift          Shift           @relation(fields: [shiftId], references: [id])
   isActive       Boolean         @default(true)
   hiddenInReport Boolean         @default(false)
+  pin            String?         @default("1234")
+  pinFailedAttempts Int          @default(0)
+  pinLockedUntil    DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   attendances    Attendance[]
@@ -161,6 +164,7 @@ model Attendance {
   checkOutAcc   Float?
   checkOutPhoto String?
   status        AttendanceStatus @default(GOOD)
+  isManual      Boolean          @default(false)
   note          String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
@@ -229,6 +233,8 @@ model Notification {
   userId    String
   title     String
   message   String
+  type      String?  @default("INFO")
+  link      String?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }

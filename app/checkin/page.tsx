@@ -17,10 +17,14 @@ import {
   User,
   Coffee,
   Check,
+  Lock,
+  CalendarDays,
+  FileText,
 } from "lucide-react";
 
 export default function CheckinPage() {
   const [employeeCode, setEmployeeCode] = useState("EMP002"); // Default: ចាន់ ធីតា (Barista)
+  const [pin, setPin] = useState("1234"); // 4-digit PIN
   const [employeeData, setEmployeeData] = useState<any>(null);
   const [loadingEmp, setLoadingEmp] = useState(false);
 
@@ -40,7 +44,68 @@ export default function CheckinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resultMsg, setResultMsg] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"checkin" | "history">("checkin");
+  const [activeTab, setActiveTab] = useState<"checkin" | "history" | "request">("checkin");
+
+  // Mobile Request State (Leave & OT)
+  const [requestType, setRequestType] = useState<"LEAVE" | "OT">("LEAVE");
+  const [leaveTypeId, setLeaveTypeId] = useState("leave-annual");
+  const [reqFromDate, setReqFromDate] = useState(new Date().toISOString().slice(0, 10));
+  const [reqToDate, setReqToDate] = useState(new Date().toISOString().slice(0, 10));
+  const [otHours, setOtHours] = useState("2");
+  const [reqReason, setReqReason] = useState("");
+  const [reqSuccess, setReqSuccess] = useState<string | null>(null);
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+
+  const handleMobileRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReqSubmitting(true);
+    setReqSuccess(null);
+    setErrorMsg(null);
+
+    try {
+      if (requestType === "LEAVE") {
+        const res = await fetch("/api/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeCode,
+            typeId: leaveTypeId,
+            fromDate: reqFromDate,
+            toDate: reqToDate,
+            reason: reqReason,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setReqSuccess("បានបញ្ជូនសំណើច្បាប់ដោយជោគជ័យ! ប្រធានហាងនឹងពិនិត្យអនុម័ត។");
+          setReqReason("");
+        } else {
+          setErrorMsg(json.error || "មិនអាចបញ្ជូនសំណើបានឡើយ");
+        }
+      } else {
+        const res = await fetch("/api/overtime", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeCode,
+            date: reqFromDate,
+            hours: otHours,
+            reason: reqReason,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setReqSuccess("បានបញ្ជូនសំណើ Overtime ដោយជោគជ័យ! ប្រធានហាងនឹងពិនិត្យអនុម័ត។");
+          setReqReason("");
+        } else {
+          setErrorMsg(json.error || "មិនអាចបញ្ជូនសំណើបានឡើយ");
+        }
+      }
+    } catch {
+      setErrorMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ Server");
+    }
+    setReqSubmitting(false);
+  };
 
   // System Settings State (Selfie Requirement)
   const [requireSelfie, setRequireSelfie] = useState(false);
@@ -186,6 +251,7 @@ export default function CheckinPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeCode,
+          pin,
           action,
           lat: effectiveLat,
           lng: effectiveLng,
@@ -308,10 +374,36 @@ export default function CheckinPage() {
               </div>
             </div>
           )}
+
+          {/* 4-Digit Security PIN */}
+          <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>លេខកូដសម្ងាត់ ៤ ខ្ទង់ (Security PIN)</span>
+              </label>
+              <span className="text-[10px] text-amber-400/90 font-mono font-semibold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                PIN លំនាំដើម៖ 1234
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="password"
+                maxLength={4}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="1234"
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl text-white font-mono font-bold text-center text-lg tracking-[0.4em] focus:outline-none"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 flex items-center gap-1">
+              <span>🛡️ ការពារការស្កេនជំនួសគ្នា — បញ្ចូល PIN ខុស ៥ ដង ប្រព័ន្ធនឹងចាក់សោ ១៥ នាទី</span>
+            </p>
+          </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1 bg-slate-900 border border-slate-800 rounded-2xl text-xs font-semibold">
+        <div className="grid grid-cols-3 p-1 bg-slate-900 border border-slate-800 rounded-2xl text-[11px] font-semibold">
           <button
             type="button"
             onClick={() => setActiveTab("checkin")}
@@ -321,7 +413,7 @@ export default function CheckinPage() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            ស្កេនវត្តមាន (Check-in/Out)
+            ស្កេនវត្តមាន
           </button>
           <button
             type="button"
@@ -332,7 +424,18 @@ export default function CheckinPage() {
                 : "text-slate-400 hover:text-white"
             }`}
           >
-            ប្រវត្តិស្កេន (History)
+            ប្រវត្តិស្កេន
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("request")}
+            className={`py-2 rounded-xl transition ${
+              activeTab === "request"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            សុំច្បាប់ / OT
           </button>
         </div>
 
@@ -555,7 +658,7 @@ export default function CheckinPage() {
               )}
             </div>
           </>
-        ) : (
+        ) : activeTab === "history" ? (
           /* History View */
           <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 space-y-3">
             <h3 className="text-xs font-bold text-white flex items-center gap-2">
@@ -614,6 +717,160 @@ export default function CheckinPage() {
                 })}
               </div>
             )}
+          </div>
+        ) : (
+          /* Request Leave / OT View */
+          <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-400" />
+                <span>ស្នើសុំច្បាប់ ឬ ថែមម៉ោង (Leave & OT)</span>
+              </h3>
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequestType("LEAVE");
+                    setReqSuccess(null);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                    requestType === "LEAVE"
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-400"
+                  }`}
+                >
+                  សុំច្បាប់
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequestType("OT");
+                    setReqSuccess(null);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                    requestType === "OT"
+                      ? "bg-amber-600 text-white"
+                      : "text-slate-400"
+                  }`}
+                >
+                  សុំ OT
+                </button>
+              </div>
+            </div>
+
+            {reqSuccess && (
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{reqSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleMobileRequest} className="space-y-3 text-xs">
+              {requestType === "LEAVE" ? (
+                <>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">
+                      ប្រភេទច្បាប់
+                    </label>
+                    <select
+                      value={leaveTypeId}
+                      onChange={(e) => setLeaveTypeId(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="leave-annual">
+                        ច្បាប់ឈប់សម្រាកប្រចាំឆ្នាំ (Annual Leave)
+                      </option>
+                      <option value="leave-sick">
+                        ច្បាប់ឈឺ (Sick Leave)
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        ចាប់ពីថ្ងៃ
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={reqFromDate}
+                        onChange={(e) => setReqFromDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        ដល់ថ្ងៃ
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={reqToDate}
+                        onChange={(e) => setReqToDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        កាលបរិច្ឆេទ OT
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={reqFromDate}
+                        onChange={(e) => setReqFromDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">
+                        ចំនួនម៉ោង (h)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        max="12"
+                        required
+                        value={otHours}
+                        onChange={(e) => setOtHours(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  មូលហេតុ
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="បញ្ជាក់មូលហេតុខ្លីៗ..."
+                  value={reqReason}
+                  onChange={(e) => setReqReason(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={reqSubmitting}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition disabled:opacity-50"
+              >
+                {reqSubmitting
+                  ? "កំពុងបញ្ជូនសំណើ..."
+                  : "បញ្ជូនសំណើទៅកាន់ប្រធានហាង"}
+              </button>
+            </form>
           </div>
         )}
 

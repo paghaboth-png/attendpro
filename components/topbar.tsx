@@ -16,6 +16,8 @@ import {
   X,
   ExternalLink,
   Smartphone,
+  Bell,
+  Check,
 } from "lucide-react";
 
 interface TopBarProps {
@@ -30,6 +32,54 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+
+  // Notification State
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      const json = await res.json();
+      if (json.success) {
+        setNotifications(json.data || []);
+        setUnreadCount(json.unreadCount || 0);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 20000); // 20s poll
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAllAsRead = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAllAsRead: true }),
+      });
+      setUnreadCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {}
+  };
+
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setUnreadCount((c) => Math.max(0, c - 1));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch {}
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -113,6 +163,87 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
               <Maximize2 className="w-4 h-4" />
             )}
           </button>
+
+          {/* In-App Notification Bell */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition"
+              title="ការជូនដំណឹង (Notifications)"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-hidden text-xs animate-fade-in">
+                <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-500" />
+                    <span>ការជូនដំណឹងក្នុងប្រព័ន្ធ</span>
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="text-[11px] text-blue-500 hover:underline"
+                    >
+                      អានទាំងអស់
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      គ្មានការជូនដំណឹងថ្មីឡើយ
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          markAsRead(n.id);
+                          if (n.link) window.location.href = n.link;
+                        }}
+                        className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition flex items-start gap-2.5 ${
+                          !n.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                            !n.isRead ? "bg-blue-500" : "bg-transparent"
+                          }`}
+                        />
+                        <div className="flex-1 space-y-0.5">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                            {n.title}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {n.message}
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-mono pt-0.5">
+                            {new Date(n.createdAt).toLocaleTimeString("km-KH", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              day: "2-digit",
+                              month: "2-digit",
+                              timeZone: "Asia/Phnom_Penh",
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Language Switcher */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-full border border-slate-200 dark:border-slate-700/60">
