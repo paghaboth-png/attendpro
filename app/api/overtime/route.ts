@@ -8,11 +8,24 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
+    const sessionUserId = (session?.user as any)?.id;
+
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
 
     const where: any = {};
     if (status && status !== "all") where.status = status;
+
+    if (role === "EMPLOYEE") {
+      let myEmpId = (session?.user as any)?.employeeId;
+      if (!myEmpId && sessionUserId) {
+        const myEmp = await prisma.employee.findFirst({ where: { userId: sessionUserId } });
+        myEmpId = myEmp?.id;
+      }
+      where.employeeId = myEmpId || "NO_ACCESS";
+    }
 
     const overtimes = await prisma.overtime.findMany({
       where,
@@ -115,6 +128,13 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+    const user = session?.user as any;
+    if (!session || user?.role === "EMPLOYEE") {
+      return NextResponse.json(
+        { success: false, error: "សិទ្ធិមិនគ្រប់គ្រាន់ដើម្បីអនុម័ត Overtime (Manager/Admin only)" },
+        { status: 403 }
+      );
+    }
     const body = await req.json();
     const { id, status } = body; // "APPROVED" or "REJECTED"
 

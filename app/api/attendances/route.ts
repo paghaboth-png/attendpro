@@ -15,19 +15,21 @@ export async function GET(req: Request) {
     const employeeId = searchParams.get("employeeId");
     const status = searchParams.get("status");
 
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
+    const sessionUserId = (session?.user as any)?.id;
+
     const where: any = {};
 
-    if (date && date !== "all") {
-      where.date = date;
-    } else if (startDate && endDate) {
-      where.date = { gte: startDate, lte: endDate };
-    }
-
-    if (branchId && branchId !== "all") {
-      where.branchId = branchId;
-    }
-
-    if (employeeId && employeeId !== "all") {
+    // Strict role isolation: Employees can ONLY view their own attendance!
+    if (role === "EMPLOYEE") {
+      let myEmpId = (session?.user as any)?.employeeId;
+      if (!myEmpId && sessionUserId) {
+        const myEmp = await prisma.employee.findFirst({ where: { userId: sessionUserId } });
+        myEmpId = myEmp?.id;
+      }
+      where.employeeId = myEmpId || "NO_ACCESS";
+    } else if (employeeId && employeeId !== "all") {
       where.employeeId = employeeId;
     }
 

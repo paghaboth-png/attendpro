@@ -1,16 +1,29 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
     const { searchParams } = new URL(req.url);
-    const code = searchParams.get("code")?.trim().toUpperCase();
+    let code = searchParams.get("code")?.trim().toUpperCase();
+
+    if (!code && session?.user) {
+      code = (session.user as any).employeeCode;
+      if (!code) {
+        const emp = await prisma.employee.findFirst({
+          where: { userId: (session.user as any).id },
+        });
+        code = emp?.code;
+      }
+    }
 
     if (!code) {
       return NextResponse.json(
-        { success: false, error: "Missing employee code" },
+        { success: false, error: "Missing employee code or session" },
         { status: 400 }
       );
     }

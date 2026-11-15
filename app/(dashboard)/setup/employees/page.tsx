@@ -26,9 +26,14 @@ import {
   KeyRound,
   Copy,
   Check,
+  Sparkles,
+  UserCheck,
+  Shield,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useI18n } from "@/lib/i18n";
 import { DatePicker } from "@/components/date-picker";
+import { generateReadableTempPassword } from "@/lib/pin-utils";
 
 const DAYS_OF_WEEK = [
   { key: "1", label: "ចន្ទ", en: "Mon" },
@@ -101,9 +106,14 @@ export default function EmployeesPage() {
     salaryType: "MONTHLY",
     email: "",
     password: "",
+    createLoginAccount: false,
+    role: "EMPLOYEE",
     isActive: true,
     hiddenInReport: false,
   });
+
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -116,6 +126,128 @@ export default function EmployeesPage() {
     newPin: string;
   } | null>(null);
   const [copiedPin, setCopiedPin] = useState(false);
+
+  // Reset Password modal state
+  const [resetPasswordResult, setResetPasswordResult] = useState<{
+    username: string;
+    tempPassword: string;
+    name: string;
+  } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+
+  // Bulk Create Logins state
+  const [bulkLoginsResult, setBulkLoginsResult] = useState<Array<{
+    code: string;
+    name: string;
+    username: string;
+    tempPassword: string;
+    status: string;
+  }> | null>(null);
+  const [bulkLoginsLoading, setBulkLoginsLoading] = useState(false);
+
+  const handleToggleUserStatus = async (empId: string, currentActive: boolean) => {
+    try {
+      const res = await fetch(`/api/employees/${empId}/toggle-user-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !currentActive }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert(data.error || "បរាជ័យក្នុងការប្តូរស្ថានភាព");
+      }
+    } catch {
+      alert("មានបញ្ហាបច្ចេកទេស");
+    }
+  };
+
+  const handleResetUserPassword = async (empId: string) => {
+    if (!confirm("តើលោកអ្នកពិតជាចង់ Reset ពាក្យសម្ងាត់សម្រាប់បុគ្គលិកនេះមែនទេ?")) return;
+    try {
+      const res = await fetch(`/api/employees/${empId}/reset-password`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetPasswordResult({
+          username: data.username,
+          tempPassword: data.tempPassword,
+          name: data.employeeName,
+        });
+        fetchData();
+      } else {
+        alert(data.error || "បរាជ័យក្នុងការ Reset ពាក្យសម្ងាត់");
+      }
+    } catch {
+      alert("មានបញ្ហាបច្ចេកទេស");
+    }
+  };
+
+  const handleBulkCreateLogins = async () => {
+    if (selectedEmpIds.length === 0) return;
+    if (
+      !confirm(
+        `តើលោកអ្នកចង់បង្កើតគណនី Login សម្រាប់បុគ្គលិកចំនួន ${selectedEmpIds.length} នាក់ និងទាញយក Excel មែនទេ?`
+      )
+    )
+      return;
+
+    setBulkLoginsLoading(true);
+    try {
+      const res = await fetch("/api/employees/bulk-create-logins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeIds: selectedEmpIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBulkLoginsResult(data.accounts || []);
+        fetchData();
+
+        // Generate and trigger CSV download with UTF-8 BOM
+        const rows = [
+          [
+            "កូដបុគ្គលិក",
+            "ឈ្មោះបុគ្គលិក",
+            "Username សម្រាប់ចូល",
+            "ពាក្យសម្ងាត់បណ្តោះអាសន្ន",
+            "ស្ថានភាព",
+          ],
+          ...(data.accounts || []).map((acc: any) => [
+            acc.code,
+            acc.name,
+            acc.username,
+            acc.tempPassword,
+            acc.status === "CREATED" ? "បង្កើតថ្មី" : "មានគណនីស្រាប់",
+          ]),
+        ];
+        const csvContent =
+          "\uFEFF" +
+          rows.map((e: any[]) => e.map((c: any) => `"${c}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute(
+          "download",
+          `attendpro_logins_${new Date().toISOString().slice(0, 10)}.csv`
+        );
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert(data.error || "បរាជ័យក្នុងការបង្កើតគណនី");
+      }
+    } catch {
+      alert("មានបញ្ហាបច្ចេកទេស");
+    } finally {
+      setBulkLoginsLoading(false);
+    }
+  };
 
   const handleResetPin = async (empId: string) => {
     if (!confirm("តើលោកអ្នកពិតជាចង់ Reset PIN សម្រាប់បុគ្គលិកនេះមែនទេ?")) return;
@@ -190,6 +322,8 @@ export default function EmployeesPage() {
       salaryType: "MONTHLY",
       email: "",
       password: "",
+      createLoginAccount: false,
+      role: "EMPLOYEE",
       isActive: true,
       hiddenInReport: false,
     });
@@ -233,6 +367,8 @@ export default function EmployeesPage() {
       salaryType: emp.salaryType || "MONTHLY",
       email: emp.user?.email || "",
       password: "",
+      createLoginAccount: !!emp.user,
+      role: emp.user?.role || "EMPLOYEE",
       isActive: emp.isActive,
       hiddenInReport: emp.hiddenInReport,
     });
@@ -318,6 +454,13 @@ export default function EmployeesPage() {
 
       if (data.success) {
         setIsModalOpen(false);
+        if (data.tempPassword) {
+          setResetPasswordResult({
+            username: data.username || formData.email || formData.phone || formData.code,
+            tempPassword: data.tempPassword,
+            name: data.data?.name || formData.name,
+          });
+        }
         fetchData();
       } else {
         setErrorMsg(data.error || "Failed to save employee");
@@ -515,14 +658,26 @@ export default function EmployeesPage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Bulk Assign Shift Button */}
           {selectedEmpIds.length > 0 && (
-            <button
-              type="button"
-              onClick={openBulkModal}
-              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-purple-600/30 animate-pulse"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>កំណត់វេន/ម៉ោងឱ្យអ្នកទាំងនេះ ({selectedEmpIds.length})</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={openBulkModal}
+                className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-purple-600/30"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>កំណត់វេន/ម៉ោង ({selectedEmpIds.length})</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={bulkLoginsLoading}
+                onClick={handleBulkCreateLogins}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>{bulkLoginsLoading ? "កំពុងបង្កើត..." : `បង្កើតគណនី Login (${selectedEmpIds.length})`}</span>
+              </button>
+            </>
           )}
 
           {/* Excel Export */}
@@ -801,6 +956,66 @@ export default function EmployeesPage() {
                     <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       ${emp.baseSalary || 200}/{emp.salaryType === "HOURLY" ? "ម៉ោង" : emp.salaryType === "DAILY" ? "ថ្ងៃ" : "ខែ"}
                     </span>
+                  </div>
+
+                  {/* Login Account Management */}
+                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200 dark:border-slate-800/60">
+                    <div className="flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-blue-500" />
+                      <span className="text-slate-500 dark:text-slate-400">Login:</span>
+                      {emp.user ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          {emp.user.role === "ADMIN" ? "Admin" : emp.user.role === "MANAGER" ? "Manager" : "Employee"}
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] text-slate-400 bg-slate-800 border border-slate-700">
+                          គ្មាន Login
+                        </span>
+                      )}
+                    </div>
+
+                    {emp.user ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleUserStatus(emp.id, emp.user.isActive)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border transition ${
+                            emp.user.isActive
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+                          }`}
+                          title={emp.user.isActive ? "ចុចដើម្បីបិទគណនី Login" : "ចុចដើម្បីបើកគណនី Login"}
+                        >
+                          {emp.user.isActive ? "បើក" : "បិទ"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleResetUserPassword(emp.id)}
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 transition flex items-center gap-1"
+                          title="Reset ពាក្យសម្ងាត់ថ្មី"
+                        >
+                          <KeyRound className="w-2.5 h-2.5" />
+                          <span>Reset PW</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openEditModal(emp);
+                          setFormData((prev) => ({
+                            ...prev,
+                            createLoginAccount: true,
+                            role: "EMPLOYEE",
+                            password: generateReadableTempPassword(),
+                          }));
+                        }}
+                        className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 transition flex items-center gap-1"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>+ បង្កើត Login</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1308,15 +1523,6 @@ export default function EmployeesPage() {
                       <Lock className="w-3.5 h-3.5 text-amber-400" />
                       <span>លេខកូដសម្ងាត់ Check-in (PIN ៤ ខ្ទង់) *</span>
                     </label>
-                    {editingEmp && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, pin: "1234" })}
-                        className="text-[10px] text-amber-400 hover:underline font-mono"
-                      >
-                        Reset ទៅ 1234
-                      </button>
-                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <input
@@ -1330,7 +1536,7 @@ export default function EmployeesPage() {
                           pin: e.target.value.replace(/\D/g, ""),
                         })
                       }
-                      placeholder="1234"
+                      placeholder="****"
                       className="w-28 px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono font-bold tracking-widest text-center focus:border-amber-500 focus:outline-none"
                     />
                     <span className="text-[11px] text-slate-400">
@@ -1339,29 +1545,141 @@ export default function EmployeesPage() {
                   </div>
                 </div>
 
-                {!editingEmp && (
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                    <span className="font-semibold text-slate-300 block">
-                      បង្កើតគណនី Login (ជម្រើសបន្ថែម)
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="email"
-                        placeholder="Email សម្រាប់ Login"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      />
-                      <input
-                        type="password"
-                        placeholder="Password (លំនាំដើម Attend@12345)"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      />
+                {/* Login Account Section */}
+                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-slate-200 text-xs flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-blue-400" />
+                        <span>គណនី Login សម្រាប់ប្រព័ន្ធ (ជម្រើស)</span>
+                      </span>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        សម្រាប់ចូលប្រើប្រព័ន្ធ ស្នើសុំច្បាប់/OT និងមើលទិន្នន័យផ្ទាល់ខ្លួន
+                      </p>
                     </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.createLoginAccount}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setFormData((prev) => ({
+                            ...prev,
+                            createLoginAccount: checked,
+                            password: checked && !prev.password ? generateReadableTempPassword() : prev.password,
+                          }));
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                   </div>
-                )}
+
+                  {formData.createLoginAccount && (
+                    <div className="pt-2 border-t border-slate-800 space-y-2.5">
+                      {/* Username Hint */}
+                      <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-[11px] text-slate-300 space-y-1">
+                        <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Username ចូលប្រើ៖</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                          ប្រព័ន្ធនឹងយក{" "}
+                          <strong className="text-white">
+                            {formData.phone ? formData.phone : formData.email ? formData.email : formData.code}
+                          </strong>{" "}
+                          (លេខទូរស័ព្ទ អ៊ីមែល ឬកូដបុគ្គលិក) ជា Username សម្រាប់ចូល។
+                        </p>
+                      </div>
+
+                      {/* Role and Email */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                            អ៊ីមែល (បើមាន)
+                          </label>
+                          <input
+                            type="email"
+                            placeholder="ឧ. som.chann@attendpro.local"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-slate-300 mb-1">
+                            តួនាទីគណនី (Role)
+                          </label>
+                          <select
+                            value={formData.role}
+                            disabled={!isSuperAdmin}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                            className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                          >
+                            <option value="EMPLOYEE">បុគ្គលិក (Employee)</option>
+                            <option value="MANAGER">ប្រធានផ្នែក (Manager)</option>
+                            <option value="ADMIN">អ្នកគ្រប់គ្រង (Admin)</option>
+                          </select>
+                          {!isSuperAdmin && (
+                            <span className="text-[9px] text-slate-500 block mt-0.5">
+                              * មានតែ Super Admin ទើបអាចកំណត់ Manager/Admin បាន
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Password with Random Generator and Copy */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-medium text-slate-300">
+                            ពាក្យសម្ងាត់ (Password យ៉ាងតិច ៨ តួ) *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                password: generateReadableTempPassword(),
+                              }))
+                            }
+                            className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
+                          >
+                            <Sparkles className="w-3 h-3 text-blue-400" />
+                            <span>បង្កើតចៃដន្យ (Random)</span>
+                          </button>
+                        </div>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            required={formData.createLoginAccount && !editingEmp?.user}
+                            placeholder="យ៉ាងតិច ៨ តួ (ឧ. Attend#9k2m)"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full pl-3 pr-20 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                          />
+                          {formData.password && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(formData.password);
+                                alert("បានចម្លងពាក្យសម្ងាត់");
+                              }}
+                              className="absolute right-1 px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-[10px] font-semibold flex items-center gap-1 transition"
+                            >
+                              <Copy className="w-2.5 h-2.5" />
+                              <span>ចម្លង</span>
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង។
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex items-center gap-6 pt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1646,6 +1964,153 @@ export default function EmployeesPage() {
                 setResetPinResult(null);
                 setCopiedPin(false);
               }}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition"
+            >
+              យល់ព្រម
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Result Modal (Shown Once) */}
+      {resetPasswordResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setResetPasswordResult(null);
+                setCopiedPassword(false);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/60 flex items-center justify-center text-purple-600 dark:text-purple-400 mx-auto mb-3">
+              <KeyRound className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              ពាក្យសម្ងាត់បណ្តោះអាសន្ន
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              សម្រាប់បុគ្គលិក៖ {resetPasswordResult.name}
+            </p>
+
+            <div className="my-4 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-left space-y-2">
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block">Username សម្រាប់ចូល៖</span>
+                <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {resetPasswordResult.username}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block">Password បណ្តោះអាសន្ន៖</span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-lg font-mono font-extrabold text-purple-600 dark:text-purple-400 tracking-wider">
+                    {resetPasswordResult.tempPassword}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resetPasswordResult.tempPassword);
+                      setCopiedPassword(true);
+                      setTimeout(() => setCopiedPassword(false), 2000);
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-semibold text-xs border border-purple-500/30 flex items-center gap-1 transition"
+                  >
+                    {copiedPassword ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>បានចម្លង</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>ចម្លង</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/50 text-left mb-5">
+              <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed flex items-start gap-1.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400 mt-0.5" />
+                <span>
+                  <strong>ចំណាំ៖</strong> ពាក្យសម្ងាត់នេះបង្ហាញតែម្តងគត់។ បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរ Password ថ្មីដោយខ្លួនឯងភ្លាមៗពេលចូលលើកដំបូង។
+                </span>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setResetPasswordResult(null);
+                setCopiedPassword(false);
+              }}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition"
+            >
+              យល់ព្រម
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Logins Result Modal (Shown Once with summary) */}
+      {bulkLoginsResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl relative space-y-4">
+            <button
+              type="button"
+              onClick={() => setBulkLoginsResult(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  បង្កើតគណនី Login ចំនួន {bulkLoginsResult.length} នាក់ដោយជោគជ័យ
+                </h3>
+                <p className="text-xs text-slate-500">
+                  ឯកសារ Excel (CSV) ត្រូវបានទាញយកដោយស្វ័យប្រវត្តិ
+                </p>
+              </div>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="p-2.5">កូដ</th>
+                    <th className="p-2.5">ឈ្មោះ</th>
+                    <th className="p-2.5">Username</th>
+                    <th className="p-2.5">Password បណ្តោះអាសន្ន</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
+                  {bulkLoginsResult.map((acc, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="p-2.5 text-slate-500">{acc.code}</td>
+                      <td className="p-2.5 font-sans font-medium text-slate-800 dark:text-slate-200">{acc.name}</td>
+                      <td className="p-2.5 text-blue-600 dark:text-blue-400">{acc.username}</td>
+                      <td className="p-2.5 text-emerald-600 dark:text-emerald-400 font-bold">{acc.tempPassword}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setBulkLoginsResult(null)}
               className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition"
             >
               យល់ព្រម

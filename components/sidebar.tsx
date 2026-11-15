@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useI18n } from "@/lib/i18n";
 import { useCompany } from "@/lib/company-context";
 import {
@@ -35,12 +36,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useI18n();
   const { company } = useCompany();
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role || "ADMIN";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [setupExpanded, setSetupExpanded] = useState(true);
   const [attendanceExpanded, setAttendanceExpanded] = useState(true);
 
-  const menuGroups = [
+  const rawMenuGroups = [
     {
       groupTitle: t("navOverview"),
       items: [
@@ -96,6 +99,28 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       ],
     },
   ];
+
+  // Role-based Menu Isolation: Employees only see Overview, Attendance (own), and Leave/OT
+  const menuGroups = rawMenuGroups
+    .map((grp) => {
+      if (userRole === "EMPLOYEE") {
+        if (
+          grp.groupTitle === t("navSetup") ||
+          grp.groupTitle === t("navSettings") ||
+          grp.groupTitle === t("navReports")
+        ) {
+          return null;
+        }
+        if (grp.groupTitle === t("navAttendanceTime")) {
+          return {
+            ...grp,
+            items: grp.items.filter((item) => item.href === "/attendances"),
+          };
+        }
+      }
+      return grp;
+    })
+    .filter(Boolean) as typeof rawMenuGroups;
 
   return (
     <>

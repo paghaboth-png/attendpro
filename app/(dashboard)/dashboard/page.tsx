@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { DatePicker } from "@/components/date-picker";
+import { EmployeeDashboardCheckin } from "@/components/employee-dashboard-checkin";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -169,6 +170,16 @@ export default function DashboardPage() {
       countColor: "text-sky-400",
     },
   ];
+
+  const isEmployeeRole = (session?.user as any)?.role === "EMPLOYEE";
+
+  if (isEmployeeRole) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <EmployeeDashboardCheckin />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

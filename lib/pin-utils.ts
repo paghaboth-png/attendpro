@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 export const DISALLOWED_WEAK_PINS = [
   "1234",
   "0000",
@@ -16,6 +14,15 @@ export const DISALLOWED_WEAK_PINS = [
   "1212",
   "2580",
 ];
+
+function getRandomInt(min: number, max: number): number {
+  if (typeof window !== "undefined" && window.crypto && window.crypto.getRandomValues) {
+    const arr = new Uint32Array(1);
+    window.crypto.getRandomValues(arr);
+    return min + (arr[0] % (max - min));
+  }
+  return Math.floor(Math.random() * (max - min)) + min;
+}
 
 export function isWeakPin(pin: string): boolean {
   if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
@@ -55,7 +62,7 @@ export function generateSecurePin(): string {
   let attempts = 0;
   do {
     // Generate 4-digit number between 1000 and 9999
-    pin = crypto.randomInt(1000, 10000).toString();
+    pin = getRandomInt(1000, 10000).toString();
     attempts++;
   } while (isWeakPin(pin) && attempts < 100);
 
@@ -75,15 +82,15 @@ export function generateReadableTempPassword(): string {
 
   // Guarantee at least 1 upper, 1 lower, 1 digit
   let pwd = [
-    upper[crypto.randomInt(0, upper.length)],
-    lower[crypto.randomInt(0, lower.length)],
-    digits[crypto.randomInt(0, digits.length)],
+    upper[getRandomInt(0, upper.length)],
+    lower[getRandomInt(0, lower.length)],
+    digits[getRandomInt(0, digits.length)],
   ];
 
   for (let i = 3; i < 8; i++) {
-    pwd.push(allChars[crypto.randomInt(0, allChars.length)]);
+    pwd.push(allChars[getRandomInt(0, allChars.length)]);
   }
 
   // Shuffle
-  return pwd.sort(() => crypto.randomInt(-1, 2)).join("");
+  return pwd.sort(() => getRandomInt(-1, 2)).join("");
 }

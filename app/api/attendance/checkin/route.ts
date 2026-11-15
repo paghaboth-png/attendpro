@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { dispatchTelegramNotification } from "@/lib/telegram";
@@ -83,8 +85,16 @@ export async function POST(req: Request) {
     const currentPin = employee.pin || "1234";
     const enteredPin = (pin || "").trim();
 
-    let isPinValid = false;
-    if (enteredPin) {
+    // Check if check-in is submitted by logged-in employee (Session Auth bypasses PIN)
+    const session = await getServerSession(authOptions);
+    const isSessionAuth = Boolean(
+      session?.user &&
+        ((session.user as any).employeeCode === employee.code ||
+          (session.user as any).id === employee.userId)
+    );
+
+    let isPinValid = isSessionAuth;
+    if (!isPinValid && enteredPin) {
       if (currentPin.startsWith("$2")) {
         isPinValid = await bcrypt.compare(enteredPin, currentPin);
       } else {

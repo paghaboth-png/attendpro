@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { generateSecurePin, isWeakPin } from "@/lib/pin-utils";
+import { generateSecurePin, isWeakPin, generateReadableTempPassword } from "@/lib/pin-utils";
+import { normalizePhoneNumber } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -89,27 +92,72 @@ export async function POST(req: Request) {
     // Check code uniqueness
     const existingCode = await prisma.employee.findUnique({ where: { code } });
     if (existingCode) {
-      return NextResponse.json({ success: false, error: "Employee Code already exists" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "កូដបុគ្គលិកនេះមានក្នុងប្រព័ន្ធរួចហើយ" }, { status: 400 });
+    }
+
+    // Check duplicate phone or email
+    const normPhone = phone ? normalizePhoneNumber(phone) : null;
+    const normEmail = email ? email.trim().toLowerCase() : null;
+
+    if (normPhone) {
+      const dupPhoneUser = await prisma.user.findFirst({ where: { phone: normPhone } });
+      const dupPhoneEmp = await prisma.employee.findFirst({ where: { phone: normPhone } });
+      if (dupPhoneUser || dupPhoneEmp) {
+        return NextResponse.json(
+          { success: false, error: "លេខទូរស័ព្ទនេះមានក្នុងប្រព័ន្ធរួចហើយ សូមពិនិត្យឡើងវិញ" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (normEmail) {
+      const dupEmail = await prisma.user.findFirst({ where: { email: normEmail } });
+      if (dupEmail) {
+        return NextResponse.json(
+          { success: false, error: "អ៊ីមែលនេះមានក្នុងប្រព័ន្ធរួចហើយ សូមពិនិត្យឡើងវិញ" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Role permission check: only Super Admin can create Admin or Manager
+    const session = await getServerSession(authOptions);
+    const requesterRole = (session?.user as any)?.role;
+    let targetRole = role || "EMPLOYEE";
+    if (["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(targetRole) && requesterRole !== "SUPER_ADMIN") {
+      targetRole = "EMPLOYEE";
     }
 
     let userId: string | null = null;
-    if (email) {
-      const existingUser = await prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        userId = existingUser.id;
-      } else {
-        const passwordHash = await bcrypt.hash(password || "Attend@12345", 10);
-        const newUser = await prisma.user.create({
-          data: {
-            email,
-            phone: phone || null,
-            name,
-            passwordHash,
-            role: role || "EMPLOYEE",
-          },
-        });
-        userId = newUser.id;
+    let createdTempPassword: string | null = null;
+
+    // Create login account if enabled (or email/password provided)
+    const shouldCreateLogin = body.createLoginAccount || (email && password);
+    if (shouldCreateLogin) {
+      if (!normPhone && !normEmail) {
+        return NextResponse.json(
+          { success: false, error: "គណនី Login តម្រូវឱ្យមានលេខទូរស័ព្ទ ឬអ៊ីមែលយ៉ាងតិចមួយ" },
+          { status: 400 }
+        );
       }
+
+      const finalPassword =
+        password && password.length >= 8 ? password : generateReadableTempPassword();
+      createdTempPassword = finalPassword;
+      const passwordHash = await bcrypt.hash(finalPassword, 10);
+
+      const newUser = await prisma.user.create({
+        data: {
+          email: normEmail,
+          phone: normPhone,
+          name,
+          passwordHash,
+          role: targetRole,
+          mustChangePassword: true,
+          isActive: true,
+        },
+      });
+      userId = newUser.id;
     }
 
         const rawPin = pin && /^\d{4}$/.test(pin) && !isWeakPin(pin) ? pin : generateSecurePin();
@@ -167,6 +215,8 @@ export async function POST(req: Request) {
           success: true,
           data: { ...employee, pin: "●●●●" },
           initialPin: rawPin,
+          tempPassword: createdTempPassword,
+          username: normPhone || normEmail,
         });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
