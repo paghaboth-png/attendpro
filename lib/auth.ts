@@ -2,6 +2,12 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeIdentifier,
+  checkLoginLockout,
+  recordFailedLoginAttempt,
+  resetLoginLockout,
+} from "@/lib/rate-limit";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -18,16 +24,34 @@ export const authOptions: NextAuthOptions = {
         identifier: { label: "Email or Phone", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.identifier || !credentials?.password) {
-          throw new Error("Missing credentials");
+          throw new Error("INVALID_CREDENTIALS");
         }
 
+        const rawIdentifier = credentials.identifier.trim();
+        const xForwardedFor = (req?.headers as any)?.["x-forwarded-for"];
+        const clientIp =
+          typeof xForwardedFor === "string"
+            ? xForwardedFor.split(",")[0].trim()
+            : "unknown";
+
+        // 1. Rate Limit & Lockout Check (5 attempts -> 15 min lock)
+        const lockoutCheck = await checkLoginLockout(rawIdentifier, clientIp);
+        if (lockoutCheck.locked) {
+          throw new Error(`LOCKED:${lockoutCheck.remainingMinutes}`);
+        }
+
+        // 2. Normalize Cambodian phone / email
+        const norm = normalizeIdentifier(rawIdentifier);
+
+        // 3. Find User
         const user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email: credentials.identifier.trim().toLowerCase() },
-              { phone: credentials.identifier.trim() },
+              { email: norm.value },
+              { phone: norm.value },
+              { phone: rawIdentifier },
             ],
             isActive: true,
           },
@@ -43,23 +67,39 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.passwordHash) {
-          return null;
+          const failResult = await recordFailedLoginAttempt(rawIdentifier, clientIp);
+          if (failResult.locked) {
+            throw new Error(`LOCKED:${failResult.remainingMinutes}`);
+          }
+          throw new Error("INVALID_CREDENTIALS");
         }
 
+        // 4. Validate Password
         const isValid = await bcrypt.compare(
           credentials.password,
           user.passwordHash
         );
 
         if (!isValid) {
-          return null;
+          const failResult = await recordFailedLoginAttempt(rawIdentifier, clientIp);
+          if (failResult.locked) {
+            throw new Error(`LOCKED:${failResult.remainingMinutes}`);
+          }
+          throw new Error("INVALID_CREDENTIALS");
         }
+
+        // 5. Success -> reset rate limits
+        await resetLoginLockout(rawIdentifier, clientIp);
 
         return {
           id: user.id,
           email: user.email,
+          phone: user.phone,
           name: user.name,
           role: user.role,
+          mustChangePassword: user.mustChangePassword,
+          employeeId: user.employee?.id || null,
+          employeeCode: user.employee?.code || null,
           branchName: user.employee?.branch?.name || "All Branches",
           positionName: user.employee?.position?.name || user.role,
         };
@@ -71,8 +111,12 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.mustChangePassword = (user as any).mustChangePassword;
+        token.employeeId = (user as any).employeeId;
+        token.employeeCode = (user as any).employeeCode;
         token.branchName = (user as any).branchName;
         token.positionName = (user as any).positionName;
+        token.phone = (user as any).phone;
       }
       return token;
     },
@@ -80,8 +124,12 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).mustChangePassword = token.mustChangePassword;
+        (session.user as any).employeeId = token.employeeId;
+        (session.user as any).employeeCode = token.employeeCode;
         (session.user as any).branchName = token.branchName;
         (session.user as any).positionName = token.positionName;
+        (session.user as any).phone = token.phone;
       }
       return session;
     },

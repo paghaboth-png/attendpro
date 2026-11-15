@@ -54,7 +54,7 @@ export const dictionary = {
   loginTitle: { km: "ចូលប្រើប្រព័ន្ធ", en: "Sign in to AttendPro" },
   loginSubtitle: { km: "សូមបញ្ចូលអ៊ីមែល ឬលេខទូរស័ព្ទ និងលេខសម្ងាត់របស់អ្នក", en: "Enter your email or phone and password to continue" },
   emailLabel: { km: "អ៊ីមែល ឬ លេខទូរស័ព្ទ", en: "Email or Phone" },
-  emailPlaceholder: { km: "admin@demo.com", en: "admin@demo.com" },
+  emailPlaceholder: { km: "អ៊ីមែល ឬលេខទូរស័ព្ទ", en: "Email or phone number" },
   passwordLabel: { km: "លេខសម្ងាត់", en: "Password" },
   passwordPlaceholder: { km: "••••••••", en: "••••••••" },
   rememberMe: { km: "ចងចាំគណនីខ្ញុំ", en: "Remember me" },
@@ -62,7 +62,10 @@ export const dictionary = {
   signInButton: { km: "ចូលប្រព័ន្ធ", en: "Sign In" },
   signingIn: { km: "កំពុងចូល...", en: "Signing in..." },
   demoAccountsTitle: { km: "គណនីសាកល្បងរហ័ស (ចុចដើម្បីបំពេញស្វ័យប្រវត្ត)៖", en: "Quick Demo Accounts (Click to autofill):" },
-  loginErrorInvalid: { km: "អ៊ីមែល ឬលេខសម្ងាត់មិនត្រឹមត្រូវឡើយ", en: "Invalid email or password" },
+  loginErrorInvalid: { km: "ព័ត៌មានចូលមិនត្រឹមត្រូវ", en: "Invalid login credentials" },
+  loginErrorLocked: { km: "គណនីត្រូវបានចាក់សោបណ្តោះអាសន្នរយៈពេល ១៥ នាទី ដោយសារព្យាយាមចូលខុសច្រើនដង", en: "Account is temporarily locked for 15 minutes due to multiple failed login attempts." },
+  forgotPasswordModalTitle: { km: "ភ្លេចលេខសម្ងាត់?", en: "Forgot Password?" },
+  forgotPasswordModalDesc: { km: "សូមទាក់ទង Admin ដើម្បី Reset ពាក្យសម្ងាត់។ នៅពេល Admin ធ្វើការ Reset រួច លោកអ្នកនឹងទទួលបានពាក្យសម្ងាត់បណ្តោះអាសន្នសម្រាប់ចូលប្រើប្រាស់។", en: "Please contact an Administrator to reset your password. Once reset, a temporary password will be provided." },
   loginErrorGeneric: { km: "មានបញ្ហាបច្ចេកទេស សូមព្យាយាមម្តងទៀត", en: "An error occurred. Please try again." },
 
   // Dashboard Page
