@@ -15,6 +15,7 @@ export interface DateRangePickerProps {
   required?: boolean;
   disabled?: boolean;
   maxDaysRange?: number; // default: 62 days
+  showRangeSummary?: boolean; // default: true, displays "ចន្លោះ: X ថ្ងៃ"
   className?: string;
 }
 
@@ -27,6 +28,7 @@ export function DateRangePicker({
   required = true,
   disabled = false,
   maxDaysRange = 62,
+  showRangeSummary = true,
   className = "",
 }: DateRangePickerProps) {
   const { locale } = useI18n();
@@ -99,6 +101,15 @@ export function DateRangePicker({
           />
         </div>
       </div>
+
+      {showRangeSummary && startDate && endDate && diffDays > 0 && (
+        <div className="flex items-center gap-2 px-1 pt-1">
+          <Calendar className={`w-4 h-4 shrink-0 ${rangeExceeded ? "text-rose-400" : "text-emerald-400"}`} />
+          <span className={`text-sm font-bold tracking-wide ${rangeExceeded ? "text-rose-400" : "text-emerald-400"}`}>
+            {isKhmer ? `ចន្លោះ: ${diffDays} ថ្ងៃ` : `Range: ${diffDays} days`}
+          </span>
+        </div>
+      )}
 
       {rangeExceeded && (
         <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">

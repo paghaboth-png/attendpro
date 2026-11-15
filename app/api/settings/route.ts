@@ -20,7 +20,6 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   tax_enabled: "false",       // OFF by default as selected by user
   nssf_enabled: "false",      // OFF by default as selected by user
   allow_employee_view_payslip: "false",
-  payroll_cutoff_day: "7",    // Day 7 of month by default
 };
 
 export async function GET() {
@@ -86,7 +85,6 @@ export async function GET() {
         taxEnabled: settingsMap.tax_enabled === "true",
         nssfEnabled: settingsMap.nssf_enabled === "true",
         allowEmployeeViewPayslip: settingsMap.allow_employee_view_payslip === "true",
-        payrollCutoffDay: parseInt(settingsMap.payroll_cutoff_day) || 7,
       },
     });
   } catch (error: any) {
@@ -126,7 +124,6 @@ export async function POST(req: Request) {
       taxEnabled,
       nssfEnabled,
       allowEmployeeViewPayslip,
-      payrollCutoffDay,
     } = body;
 
     let company = await prisma.company.findFirst();
@@ -182,11 +179,6 @@ export async function POST(req: Request) {
       updates.push({
         key: "allow_employee_view_payslip",
         value: String(Boolean(allowEmployeeViewPayslip)),
-      });
-    if (payrollCutoffDay !== undefined)
-      updates.push({
-        key: "payroll_cutoff_day",
-        value: String(parseInt(payrollCutoffDay) || 7),
       });
 
     for (const item of updates) {

@@ -39,7 +39,7 @@ import {
   Square,
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { PayrollDatePresets } from "@/components/payroll-date-presets";
+import { getNowPhnomPenh, formatYMD, getDaysInMonth } from "@/lib/date-utils";
 
 interface PayrollItem {
   id: string;
@@ -119,10 +119,11 @@ export default function PayrollPage() {
   const [allEmployees, setAllEmployees] = useState<Array<{ id: string; code: string; name: string; branchId: string; departmentId: string; isActive: boolean; baseSalary: number }>>([]);
 
   // Generator Form state (Part ខ)
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const now = new Date();
-  const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const nowPnH = getNowPhnomPenh();
+  const curYear = nowPnH.getFullYear();
+  const curMonth = nowPnH.getMonth() + 1;
+  const firstDayThisMonth = formatYMD(curYear, curMonth, 1);
+  const lastDayThisMonth = formatYMD(curYear, curMonth, getDaysInMonth(curYear, curMonth));
 
   const [genStartDate, setGenStartDate] = useState(firstDayThisMonth);
   const [genEndDate, setGenEndDate] = useState(lastDayThisMonth);
@@ -131,7 +132,6 @@ export default function PayrollPage() {
   const [genEmployeeMode, setGenEmployeeMode] = useState<"ALL" | "SPECIFIC">("ALL");
   const [genSelectedEmpIds, setGenSelectedEmpIds] = useState<string[]>([]);
   const [genShowResign, setGenShowResign] = useState(false);
-  const [cutoffDay, setCutoffDay] = useState(7);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
 
@@ -198,25 +198,20 @@ export default function PayrollPage() {
   // 3. Fetch branches, departments, and employees for generator
   const fetchMetadata = async () => {
     try {
-      const [bRes, dRes, eRes, sRes] = await Promise.all([
+      const [bRes, dRes, eRes] = await Promise.all([
         fetch("/api/branches"),
         fetch("/api/departments"),
         fetch("/api/employees"),
-        fetch("/api/settings"),
       ]);
-      const [bJson, dJson, eJson, sJson] = await Promise.all([
+      const [bJson, dJson, eJson] = await Promise.all([
         bRes.json(),
         dRes.json(),
         eRes.json(),
-        sRes.json(),
       ]);
 
       if (bJson.success) setBranches(bJson.data || []);
       if (dJson.success) setDepartments(dJson.data || []);
       if (eJson.success) setAllEmployees(eJson.data || []);
-      if (sJson.success && sJson.data?.payrollCutoffDay) {
-        setCutoffDay(sJson.data.payrollCutoffDay);
-      }
     } catch {
       console.error("Metadata fetch error");
     }
@@ -227,38 +222,6 @@ export default function PayrollPage() {
     fetchHistoryList();
     fetchMetadata();
   }, []);
-
-  // Quick Date Selectors
-  const handleQuickDateSelect = (type: "THIS_MONTH" | "LAST_MONTH" | "FIRST_HALF" | "SECOND_HALF" | "CUTOFF_7") => {
-    const cur = new Date();
-    if (type === "THIS_MONTH") {
-      const start = new Date(cur.getFullYear(), cur.getMonth(), 1).toISOString().slice(0, 10);
-      const end = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).toISOString().slice(0, 10);
-      setGenStartDate(start);
-      setGenEndDate(end);
-    } else if (type === "LAST_MONTH") {
-      const start = new Date(cur.getFullYear(), cur.getMonth() - 1, 1).toISOString().slice(0, 10);
-      const end = new Date(cur.getFullYear(), cur.getMonth(), 0).toISOString().slice(0, 10);
-      setGenStartDate(start);
-      setGenEndDate(end);
-    } else if (type === "FIRST_HALF") {
-      const start = new Date(cur.getFullYear(), cur.getMonth(), 1).toISOString().slice(0, 10);
-      const end = new Date(cur.getFullYear(), cur.getMonth(), 15).toISOString().slice(0, 10);
-      setGenStartDate(start);
-      setGenEndDate(end);
-    } else if (type === "SECOND_HALF") {
-      const start = new Date(cur.getFullYear(), cur.getMonth(), 16).toISOString().slice(0, 10);
-      const end = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).toISOString().slice(0, 10);
-      setGenStartDate(start);
-      setGenEndDate(end);
-    } else if (type === "CUTOFF_7") {
-      // 7th of last month to 6th of this month
-      const start = new Date(cur.getFullYear(), cur.getMonth() - 1, 7).toISOString().slice(0, 10);
-      const end = new Date(cur.getFullYear(), cur.getMonth(), 6).toISOString().slice(0, 10);
-      setGenStartDate(start);
-      setGenEndDate(end);
-    }
-  };
 
   // Submit Generate Payroll (Part ខ)
   const handleGeneratePayroll = async (e: React.FormEvent) => {
@@ -753,17 +716,6 @@ export default function PayrollPage() {
           )}
 
           <form onSubmit={handleGeneratePayroll} className="space-y-5 text-xs">
-            {/* Quick Date Range Selectors */}
-            <PayrollDatePresets
-              startDate={genStartDate}
-              endDate={genEndDate}
-              cutoffDay={cutoffDay}
-              onSelect={(start, end) => {
-                setGenStartDate(start);
-                setGenEndDate(end);
-              }}
-            />
-
             {/* Date Range Inputs with Custom Popover Calendar */}
             <DateRangePicker
               startDate={genStartDate}
@@ -775,6 +727,7 @@ export default function PayrollPage() {
               startLabel="ចាប់ពីថ្ងៃ (From Date) *"
               endLabel="ដល់ថ្ងៃ (To Date) *"
               required
+              showRangeSummary={true}
             />
 
             {/* Branch & Department */}
