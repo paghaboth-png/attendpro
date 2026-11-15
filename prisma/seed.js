@@ -114,35 +114,61 @@ async function main() {
   });
   console.log('✅ 3 Positions created');
 
-  // 5. Create 2 Shifts
-  const shiftMorning = await prisma.shift.upsert({
-    where: { id: 'shift-morning' },
-    update: {},
-    create: {
-      id: 'shift-morning',
-      companyId: company.id,
-      name: 'វេនព្រឹក (Morning 07:00 - 16:00)',
+  // 5. Create 2 Shift Types (Mon-Fri and Weekend)
+  const shiftMonFri = await prisma.shift.upsert({
+    where: { id: 'shift-mon-fri' },
+    update: {
+      name: 'វេនចន្ទ-សុក្រ',
+      workDays: '1,2,3,4,5',
       startTime: '07:00',
       endTime: '16:00',
       graceMinutes: 15,
-      workDays: '1,2,3,4,5,6',
+    },
+    create: {
+      id: 'shift-mon-fri',
+      companyId: company.id,
+      name: 'វេនចន្ទ-សុក្រ',
+      startTime: '07:00',
+      endTime: '16:00',
+      graceMinutes: 15,
+      workDays: '1,2,3,4,5',
     },
   });
 
-  const shiftAfternoon = await prisma.shift.upsert({
-    where: { id: 'shift-afternoon' },
-    update: {},
-    create: {
-      id: 'shift-afternoon',
-      companyId: company.id,
-      name: 'វេនរសៀល (Afternoon 13:00 - 22:00)',
-      startTime: '13:00',
-      endTime: '22:00',
+  const shiftWeekend = await prisma.shift.upsert({
+    where: { id: 'shift-weekend' },
+    update: {
+      name: 'វេនសៅរ៍-អាទិត្យ',
+      workDays: '6,0',
+      startTime: '08:00',
+      endTime: '17:00',
       graceMinutes: 15,
-      workDays: '1,2,3,4,5,6',
+    },
+    create: {
+      id: 'shift-weekend',
+      companyId: company.id,
+      name: 'វេនសៅរ៍-អាទិត្យ',
+      startTime: '08:00',
+      endTime: '17:00',
+      graceMinutes: 15,
+      workDays: '6,0',
     },
   });
-  console.log('✅ 2 Shifts created');
+
+  // Templates
+  await prisma.shiftTemplate.deleteMany({
+    where: { shiftId: { in: [shiftMonFri.id, shiftWeekend.id] } },
+  });
+
+  await prisma.shiftTemplate.createMany({
+    data: [
+      { shiftId: shiftMonFri.id, name: 'វេនព្រឹក (Morning)', startTime: '07:00', endTime: '16:00' },
+      { shiftId: shiftMonFri.id, name: 'វេនល្ងាច (Evening)', startTime: '13:00', endTime: '22:00' },
+      { shiftId: shiftWeekend.id, name: 'វេនចុងសប្តាហ៍ ពេញមួយថ្ងៃ (Weekend Full-day)', startTime: '08:00', endTime: '17:00' },
+      { shiftId: shiftWeekend.id, name: 'វេនចុងសប្តាហ៍ យប់ (Weekend Night)', startTime: '13:00', endTime: '22:00' },
+    ],
+  });
+  console.log('✅ 2 Shift Types and 4 Templates created');
 
   // 6. Create 2 Holidays
   await prisma.holiday.upsert({
@@ -260,7 +286,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept3.id,
       positionId: posManager.id,
-      shiftId: shiftMorning.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
       userId: managerUser.id,
       baseSalary: 350,
       salaryType: 'MONTHLY',
@@ -272,7 +300,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posBarista.id,
-      shiftId: shiftMorning.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
       userId: employeeUser.id,
       baseSalary: 260,
       salaryType: 'MONTHLY',
@@ -284,7 +314,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posCashier.id,
-      shiftId: shiftMorning.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
       baseSalary: 220,
       salaryType: 'MONTHLY',
     },
@@ -295,7 +327,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posBarista.id,
-      shiftId: shiftAfternoon.id,
+      shiftId: shiftWeekend.id, // Weekend Shift test employee 1
+      workingDays: '6,0',
+      shiftScheduleType: 'TEMPLATE',
       baseSalary: 250,
       salaryType: 'MONTHLY',
     },
@@ -306,8 +340,10 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posCashier.id,
-      shiftId: shiftAfternoon.id,
-      baseSalary: 220,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
+      baseSalary: 240,
       salaryType: 'MONTHLY',
     },
     {
@@ -317,7 +353,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept3.id,
       positionId: posManager.id,
-      shiftId: shiftMorning.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
       baseSalary: 350,
       salaryType: 'MONTHLY',
     },
@@ -328,7 +366,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posBarista.id,
-      shiftId: shiftMorning.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
       baseSalary: 250,
       salaryType: 'MONTHLY',
     },
@@ -339,7 +379,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posCashier.id,
-      shiftId: shiftMorning.id,
+      shiftId: shiftWeekend.id, // Weekend Shift test employee 2
+      workingDays: '6,0',
+      shiftScheduleType: 'TEMPLATE',
       baseSalary: 220,
       salaryType: 'MONTHLY',
     },
@@ -350,7 +392,9 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept2.id,
       positionId: posBarista.id,
-      shiftId: shiftAfternoon.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
       baseSalary: 250,
       salaryType: 'MONTHLY',
     },
@@ -361,7 +405,13 @@ async function main() {
       branchId: branch1.id,
       departmentId: dept1.id,
       positionId: posCashier.id,
-      shiftId: shiftAfternoon.id,
+      shiftId: shiftMonFri.id,
+      workingDays: '1,2,3,4,5',
+      shiftScheduleType: 'TEMPLATE',
+      baseSalary: 220,
+      salaryType: 'MONTHLY',
+    },
+  ];
       baseSalary: 220,
       salaryType: 'MONTHLY',
     },

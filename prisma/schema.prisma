@@ -108,17 +108,29 @@ model User {
 }
 
 model Shift {
-  id           String     @id @default(cuid())
+  id           String          @id @default(cuid())
   companyId    String
-  company      Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company      Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name         String
-  startTime    String     // e.g. "07:00"
-  endTime      String     // e.g. "16:00"
-  graceMinutes Int        @default(15)
-  workDays     String     @default("1,2,3,4,5,6") // Monday to Saturday
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  startTime    String          // e.g. "07:00"
+  endTime      String          // e.g. "16:00"
+  graceMinutes Int             @default(15)
+  workDays     String          @default("1,2,3,4,5") // Monday to Friday by default
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  templates    ShiftTemplate[]
   employees    Employee[]
+}
+
+model ShiftTemplate {
+  id        String   @id @default(cuid())
+  shiftId   String
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  name      String   // e.g. "ព្រឹក (Morning)", "ល្ងាច (Evening)"
+  startTime String   // e.g. "07:00"
+  endTime   String   // e.g. "16:00"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Employee {
@@ -139,6 +151,17 @@ model Employee {
   position       Position        @relation(fields: [positionId], references: [id])
   shiftId        String
   shift          Shift           @relation(fields: [shiftId], references: [id])
+  workingDays    String?         @default("1,2,3,4,5")
+  shiftScheduleType String?      @default("TEMPLATE") // "TEMPLATE" | "CUSTOM"
+  customStartTime   String?
+  customEndTime     String?
+  daySchedules      String?      // JSON string for per-day schedules
+  customGraceMinutes Int?        @default(15)
+  joinDate          DateTime?    @default(now())
+  endProbationDate  DateTime?
+  endContractDate   DateTime?
+  otherBranchIds    String?      // Comma-separated allowed branch IDs
+  employmentType    String?      @default("FULL_TIME") // FULL_TIME, PART_TIME, PROBATION, CONTRACT
   isActive       Boolean         @default(true)
   hiddenInReport Boolean         @default(false)
   pin            String?         @default("1234")

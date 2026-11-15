@@ -7,6 +7,7 @@ export async function GET() {
   try {
     const shifts = await prisma.shift.findMany({
       include: {
+        templates: { orderBy: { startTime: "asc" } },
         _count: { select: { employees: true } },
       },
       orderBy: { createdAt: "asc" },
