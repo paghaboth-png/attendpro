@@ -84,6 +84,7 @@ export default function SettingsPage() {
   const [tgSaving, setTgSaving] = useState(false);
   const [tgTesting, setTgTesting] = useState(false);
   const [tgChecking, setTgChecking] = useState(false);
+  const [tgDailySending, setTgDailySending] = useState(false);
 
   const fetchSettings = () => {
     setLoading(true);
@@ -322,6 +323,35 @@ export default function SettingsPage() {
       setTgStatusMsg("កំហុសក្នុងការតភ្ជាប់");
     } finally {
       setTgTesting(false);
+    }
+  };
+
+  const handleSendDailyTelegram = async () => {
+    setTgDailySending(true);
+    setTgStatusMsg(null);
+    try {
+      const res = await fetch("/api/settings/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "SEND_DAILY",
+          botToken: tgBotToken,
+          chatId: tgChatId,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTgStatus("CONNECTED");
+        setTgStatusMsg(json.message);
+      } else {
+        setTgStatus("ERROR");
+        setTgStatusMsg(json.error);
+      }
+    } catch {
+      setTgStatus("ERROR");
+      setTgStatusMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ Telegram");
+    } finally {
+      setTgDailySending(false);
     }
   };
 
@@ -1334,6 +1364,16 @@ export default function SettingsPage() {
                 >
                   <Send className={`w-3.5 h-3.5 ${tgTesting ? "animate-spin" : ""}`} />
                   <span>{tgTesting ? "កំពុងផ្ញើ..." : "ផ្ញើសារសាកល្បង"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendDailyTelegram}
+                  disabled={tgDailySending}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <Clock className={`w-3.5 h-3.5 ${tgDailySending ? "animate-spin" : ""}`} />
+                  <span>{tgDailySending ? "កំពុងផ្ញើ..." : "ផ្ញើសរុបប្រចាំថ្ងៃឥឡូវនេះ"}</span>
                 </button>
               </div>
 

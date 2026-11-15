@@ -204,7 +204,97 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. ACTION: SAVE CONFIG
+    // 3. ACTION: SEND_DAILY (Admin instant daily summary)
+    if (action === "SEND_DAILY") {
+      const rate = checkRateLimit(`telegram_daily:${userId}`, 5, 60);
+      if (!rate.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `អ្នកបានផ្ញើសាកល្បងញឹកញាប់ពេកហើយ។ សូមរង់ចាំ ${rate.resetInSeconds} វិនាទីទៀត។`,
+          },
+          { status: 429 }
+        );
+      }
+
+      if (!activeToken) {
+        return NextResponse.json({
+          success: false,
+          error: "សូមបញ្ចូល Bot Token ជាមុនសិន មុនពេលផ្ញើសារសរុប!",
+        });
+      }
+
+      if (!targetChatId) {
+        return NextResponse.json({
+          success: false,
+          error: "សូមបញ្ចូល Group Chat ID ជាមុនសិន!",
+        });
+      }
+
+      const nowUtc = new Date();
+      const phnomPenhOffset = 7 * 60 * 60 * 1000;
+      const nowLocal = new Date(nowUtc.getTime() + phnomPenhOffset);
+      const todayStr = nowLocal.toISOString().slice(0, 10);
+
+      const branch = await prisma.branch.findFirst({
+        where: { companyId: company.id, isActive: true },
+      });
+
+      const [totalEmployees, attendances, approvedLeaves] = await Promise.all([
+        prisma.employee.count({
+          where: { companyId: company.id, isActive: true },
+        }),
+        prisma.attendance.findMany({
+          where: { date: todayStr },
+        }),
+        prisma.leaveRequest.findMany({
+          where: {
+            status: "APPROVED",
+            fromDate: { lte: nowUtc },
+            toDate: { gte: nowUtc },
+          },
+        }),
+      ]);
+
+      const good = attendances.filter((a) => a.status === "GOOD").length;
+      const late = attendances.filter((a) => a.status === "LATE").length;
+      const present = attendances.length;
+      const leave = approvedLeaves.length;
+      const absent = Math.max(0, totalEmployees - (present + leave));
+
+      const dailyMsg = `📊 <b>សង្ខេបវត្តមានប្រចាំថ្ងៃ (${todayStr})</b>
+🏢 <b>សាខា៖</b> ${branch?.name || "THE ONE COFFEE (ស្វាយរៀង)"}
+👥 <b>បុគ្គលិកសរុប៖</b> ${totalEmployees} នាក់
+✅ <b>មកទាន់ពេល៖</b> ${good} នាក់
+⚠️ <b>មកយឺត៖</b> ${late} នាក់
+🏖️ <b>ច្បាប់ឈប់សម្រាក៖</b> ${leave} នាក់
+❌ <b>អវត្តមាន៖</b> ${absent} នាក់
+<i>ផ្ញើដោយ Admin (សាកល្បងដោយផ្ទាល់) ម៉ោង ${nowLocal.toTimeString().slice(0, 5)}</i>`;
+
+      const sendRes = await sendTelegramMessage(activeToken, targetChatId, dailyMsg);
+      if (!sendRes.ok) {
+        return NextResponse.json({
+          success: false,
+          error: `មិនអាចផ្ញើសារសរុបបាន: ${sendRes.error}`,
+        });
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: "TELEGRAM_DAILY_SENT",
+          entity: "TelegramConfig",
+          details: `បានផ្ញើសារសរុបប្រចាំថ្ងៃដោយផ្ទាល់ទៅ Group Chat ID: ${targetChatId}`,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `✅ សារសរុបប្រចាំថ្ងៃត្រូវបានផ្ញើទៅកាន់ Group "${targetChatId}" ដោយជោគជ័យ!`,
+      });
+    }
+
+    // 4. ACTION: SAVE CONFIG
     let newEncryptedToken = currentConfig?.botTokenEncrypted;
     if (botToken && botToken.trim() && !botToken.startsWith("••••")) {
       newEncryptedToken = encryptToken(botToken.trim());
