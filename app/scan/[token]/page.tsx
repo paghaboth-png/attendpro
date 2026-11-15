@@ -679,32 +679,7 @@ export default function ScanQrPage() {
             </div>
           )}
 
-          {/* CASE 2: COOLDOWN_BLOCKED (< 5 mins after check-in) */}
-          {state === "COOLDOWN_BLOCKED" && (
-            <div className="space-y-3 text-center py-2">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto">
-                <Clock className="w-6 h-6 animate-pulse" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-xs">
-                  អ្នកទើបតែ Check-in មិនទាន់ដល់ម៉ោង Check-out ទេ
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  ដើម្បីការពារការស្កេនច្រឡំ សូមរង់ចាំ {empStatus?.cooldownRemainingSeconds} វិនាទីទៀត
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled
-                className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-400 font-bold text-sm cursor-not-allowed"
-              >
-                សូមរង់ចាំ {empStatus?.cooldownRemainingSeconds}s ទៀត...
-              </button>
-            </div>
-          )}
-
-          {/* CASE 3: READY_CHECK_OUT */}
+          {/* CASE 2: READY_CHECK_OUT */}
           {state === "READY_CHECK_OUT" && (
             <div className="space-y-3">
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
@@ -720,7 +695,28 @@ export default function ScanQrPage() {
                       : "--:--"}
                   </strong>
                 </div>
+                <div className="flex items-center justify-between text-slate-600 pt-1 border-t border-slate-200">
+                  <span>ស្ថានភាពរំពឹងទុក៖</span>
+                  <span
+                    className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${
+                      empStatus?.isEarlyLeave
+                        ? "bg-amber-100 text-amber-800 border border-amber-200"
+                        : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    }`}
+                  >
+                    {empStatus?.checkOutExpectedStatus || "ត្រឹមត្រូវ"}
+                  </span>
+                </div>
               </div>
+
+              {empStatus?.isEarlyLeave && (
+                <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px]">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <span>
+                    អ្នកកំពុង Check-out មុនម៉ោងកំណត់នៃវេនការងារ (ស្ថានភាព៖ {empStatus?.checkOutExpectedStatus || "ចេញមុនម៉ោង"})។
+                  </span>
+                </div>
+              )}
 
               <button
                 type="button"
@@ -827,7 +823,9 @@ export default function ScanQrPage() {
               <div className="flex items-center justify-between text-slate-600">
                 <span>ស្ថានភាព៖</span>
                 <span className="font-bold text-slate-800">
-                  {empStatus?.expectedStatus || "ទាន់ពេល"}
+                  {pendingAction === "CHECK_IN"
+                    ? empStatus?.expectedStatus || "ទាន់ពេល"
+                    : empStatus?.checkOutExpectedStatus || "ត្រឹមត្រូវ"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-600">

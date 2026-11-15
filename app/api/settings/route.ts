@@ -23,7 +23,6 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   // QR Check-in settings
   require_qr_checkin: "false", // OFF by default
   enable_dynamic_qr: "false",  // OFF by default
-  qr_double_scan_delay_minutes: "5", // 5 minutes default
 };
 
 export async function GET() {
@@ -91,7 +90,6 @@ export async function GET() {
         allowEmployeeViewPayslip: settingsMap.allow_employee_view_payslip === "true",
         requireQrCheckin: settingsMap.require_qr_checkin === "true",
         enableDynamicQr: settingsMap.enable_dynamic_qr === "true",
-        qrDoubleScanDelayMinutes: parseInt(settingsMap.qr_double_scan_delay_minutes) || 5,
       },
     });
   } catch (error: any) {
@@ -133,7 +131,6 @@ export async function POST(req: Request) {
       allowEmployeeViewPayslip,
       requireQrCheckin,
       enableDynamicQr,
-      qrDoubleScanDelayMinutes,
     } = body;
 
     let company = await prisma.company.findFirst();
@@ -199,11 +196,6 @@ export async function POST(req: Request) {
       updates.push({
         key: "enable_dynamic_qr",
         value: String(Boolean(enableDynamicQr)),
-      });
-    if (qrDoubleScanDelayMinutes !== undefined)
-      updates.push({
-        key: "qr_double_scan_delay_minutes",
-        value: String(qrDoubleScanDelayMinutes),
       });
 
     for (const item of updates) {

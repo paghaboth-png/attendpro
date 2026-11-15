@@ -90,6 +90,7 @@ export async function GET(req: Request) {
     const totalRecords = attendances.length;
     const goodRecords = attendances.filter((a) => a.status === "GOOD").length;
     const lateRecords = attendances.filter((a) => a.status === "LATE").length;
+    const earlyRecords = attendances.filter((a) => a.status === "EARLY_LEAVE").length;
     const manualRecords = attendances.filter((a) => a.isManual).length;
 
     const totalOtHours = overtimes.reduce(
@@ -109,17 +110,19 @@ export async function GET(req: Request) {
       }
     });
 
-    // Daily trend (Date -> { date, good, late, total })
-    const trendMap = new Map<string, { date: string; good: number; late: number; total: number }>();
+    // Daily trend (Date -> { date, good, late, early, total })
+    const trendMap = new Map<string, { date: string; good: number; late: number; early: number; total: number }>();
     attendances.forEach((a) => {
       const entry = trendMap.get(a.date) || {
         date: a.date,
         good: 0,
         late: 0,
+        early: 0,
         total: 0,
       };
       if (a.status === "GOOD") entry.good++;
       if (a.status === "LATE") entry.late++;
+      if (a.status === "EARLY_LEAVE") entry.early++;
       entry.total++;
       trendMap.set(a.date, entry);
     });
@@ -133,6 +136,7 @@ export async function GET(req: Request) {
       const empAtts = attendances.filter((a) => a.employeeId === emp.id);
       const empGood = empAtts.filter((a) => a.status === "GOOD").length;
       const empLate = empAtts.filter((a) => a.status === "LATE").length;
+      const empEarly = empAtts.filter((a) => a.status === "EARLY_LEAVE").length;
       const empOts = overtimes.filter((o) => o.employeeId === emp.id);
       const empOtHours = empOts.reduce((s, o) => s + (o.hours || 0), 0);
 
@@ -198,6 +202,7 @@ export async function GET(req: Request) {
         totalDays: empAtts.length,
         goodDays: empGood,
         lateDays: empLate,
+        earlyDays: empEarly,
         absentDays,
         leaveDays: empLeaveDays,
         otHours: empOtHours,
@@ -219,6 +224,7 @@ export async function GET(req: Request) {
           totalRecords,
           goodRecords,
           lateRecords,
+          earlyRecords,
           manualRecords,
           totalOtHours,
           totalWorkHours: Math.round(totalWorkHours * 10) / 10,

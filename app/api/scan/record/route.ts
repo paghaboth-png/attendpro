@@ -155,11 +155,6 @@ export async function POST(req: Request) {
       timeZone: "Asia/Phnom_Penh",
     });
 
-    const delaySetting = await prisma.setting.findUnique({
-      where: { key: "qr_double_scan_delay_minutes" },
-    });
-    const cooldownMinutes = delaySetting ? parseInt(delaySetting.value) || 5 : 5;
-
     // Check existing attendance for today
     let attendance = await prisma.attendance.findUnique({
       where: {
@@ -196,25 +191,6 @@ export async function POST(req: Request) {
 
     const targetAction = action || (attendance && attendance.checkInAt && !attendance.checkOutAt ? "CHECK_OUT" : "CHECK_IN");
 
-    // Cooldown check for CHECK_OUT
-    if (targetAction === "CHECK_OUT" && attendance && attendance.checkInAt) {
-      const checkInTime = new Date(attendance.checkInAt).getTime();
-      const elapsedSeconds = Math.floor((now.getTime() - checkInTime) / 1000);
-      const cooldownSeconds = cooldownMinutes * 60;
-
-      if (elapsedSeconds < cooldownSeconds) {
-        const remainingMinutes = Math.ceil((cooldownSeconds - elapsedSeconds) / 60);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `អ្នកទើប Check-in មិនទាន់ដល់ម៉ោង Check-out ទេ (សូមរង់ចាំ ${remainingMinutes} នាទីទៀត)`,
-            remainingMinutes,
-          },
-          { status: 400 }
-        );
-      }
-    }
-
     const shift = employee.shift;
     const shiftStartTime =
       employee.shiftScheduleType === "CUSTOM" && employee.customStartTime
@@ -233,6 +209,21 @@ export async function POST(req: Request) {
 
     const isLate = diffMinutes > graceMinutes;
     const computedStatus = isLate ? "LATE" : "GOOD";
+
+    // Calculate Early Leave for Check-out
+    const shiftEndTime =
+      employee.shiftScheduleType === "CUSTOM" && employee.customEndTime
+        ? employee.customEndTime
+        : shift?.endTime || "16:00";
+    const [endH, endM] = shiftEndTime.split(":").map(Number);
+    const shiftEndTotalMin = endH * 60 + endM;
+
+    let isEarlyLeave = false;
+    if (shiftEndTotalMin >= shiftTotalMin) {
+      isEarlyLeave = currentTotalMin < shiftEndTotalMin;
+    } else {
+      isEarlyLeave = currentTotalMin < shiftEndTotalMin;
+    }
 
     let resultAttendance;
 
@@ -313,6 +304,7 @@ export async function POST(req: Request) {
           checkOutAcc: userAcc,
           checkOutDistance: distanceMeters,
           deviceInfo: userAgent || attendance.deviceInfo,
+          status: isEarlyLeave ? "EARLY_LEAVE" : attendance.status,
         },
       });
 
@@ -325,6 +317,26 @@ export async function POST(req: Request) {
       }
 
       const prevCheckout = attendance.checkOutAt;
+
+      // Status update on re-checkout: if still early, keep EARLY_LEAVE;
+      // if now on time / shift ended, revert from EARLY_LEAVE to check-in status (LATE or GOOD)
+      let newStatus = attendance.status;
+      if (isEarlyLeave) {
+        newStatus = "EARLY_LEAVE";
+      } else if (attendance.status === "EARLY_LEAVE") {
+        if (attendance.checkInAt) {
+          const inTime = new Date(attendance.checkInAt).toLocaleTimeString("en-GB", {
+            timeZone: "Asia/Phnom_Penh",
+            hour12: false,
+          });
+          const [inH, inM] = inTime.split(":").map(Number);
+          const inTotalMin = inH * 60 + inM;
+          newStatus = inTotalMin > shiftTotalMin + graceMinutes ? "LATE" : "GOOD";
+        } else {
+          newStatus = "GOOD";
+        }
+      }
+
       resultAttendance = await prisma.attendance.update({
         where: { id: attendance.id },
         data: {
@@ -333,6 +345,7 @@ export async function POST(req: Request) {
           checkOutLng: userLng,
           checkOutAcc: userAcc,
           checkOutDistance: distanceMeters,
+          status: newStatus,
         },
       });
 
@@ -343,7 +356,7 @@ export async function POST(req: Request) {
             userId: sessionUser.id || null,
             action: "UPDATE_CHECKOUT",
             entity: `Attendance: ${employee.code}`,
-            details: `បុគ្គលិក ${employee.name} (${employee.code}) បានធ្វើបច្ចុប្បន្នភាព Check-out ពី ${prevCheckout ? prevCheckout.toISOString() : "none"} ទៅ ${now.toISOString()}`,
+            details: `បុគ្គលិក ${employee.name} (${employee.code}) បានធ្វើបច្ចុប្បន្នភាព Check-out ពី ${prevCheckout ? prevCheckout.toISOString() : "none"} ទៅ ${now.toISOString()}${isEarlyLeave ? " (ចេញមុនម៉ោង)" : ""}`,
           },
         });
       } catch {}
@@ -356,7 +369,9 @@ export async function POST(req: Request) {
         targetAction === "CHECK_IN"
           ? `Check-in ជោគជ័យ! (${isLate ? `យឺត ${diffMinutes} នាទី` : "ទាន់ម៉ោង"})`
           : targetAction === "UPDATE_CHECKOUT"
-          ? "ធ្វើបច្ចុប្បន្នភាព Check-out ដោយជោគជ័យ!"
+          ? `ធ្វើបច្ចុប្បន្នភាព Check-out ដោយជោគជ័យ!${isEarlyLeave ? " (ចេញមុនម៉ោង)" : ""}`
+          : isEarlyLeave
+          ? "Check-out ជោគជ័យ! (ចេញមុនម៉ោង)"
           : "Check-out ជោគជ័យ!",
       data: {
         attendanceId: resultAttendance?.id,
@@ -364,6 +379,7 @@ export async function POST(req: Request) {
         time: currentPhnomPenhTime,
         status: resultAttendance?.status,
         isLate,
+        isEarlyLeave,
         distanceMeters,
         branchName: branch.name,
         employeeName: employee.name,

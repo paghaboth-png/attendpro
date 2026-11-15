@@ -253,6 +253,7 @@ export default function AttendancesPage() {
   const totalCount = attendances.length;
   const goodCount = attendances.filter((a) => a.status === "GOOD").length;
   const lateCount = attendances.filter((a) => a.status === "LATE").length;
+  const earlyCount = attendances.filter((a) => a.status === "EARLY_LEAVE").length;
   const manualCount = attendances.filter((a) => a.isManual).length;
 
   return (
@@ -289,8 +290,8 @@ export default function AttendancesPage() {
         </div>
       </div>
 
-      {/* 4 Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 5 Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
             <CalendarCheck className="w-5 h-5" />
@@ -318,6 +319,16 @@ export default function AttendancesPage() {
           <div>
             <div className="text-[11px] text-slate-400 font-medium">មកយឺត (LATE)</div>
             <div className="text-xl font-black text-amber-400 font-mono">{lateCount}</div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] text-slate-400 font-medium">ចេញមុនម៉ោង (EARLY)</div>
+            <div className="text-xl font-black text-orange-400 font-mono">{earlyCount}</div>
           </div>
         </div>
 
@@ -395,6 +406,7 @@ export default function AttendancesPage() {
               <option value="all">ស្ថានភាពទាំងអស់</option>
               <option value="GOOD">ទាន់ពេល (GOOD)</option>
               <option value="LATE">មកយឺត (LATE)</option>
+              <option value="EARLY_LEAVE">ចេញមុនម៉ោង (EARLY_LEAVE)</option>
               <option value="MANUAL">កែប្រែដោយដៃ (Manual)</option>
             </select>
           </div>
@@ -536,12 +548,18 @@ export default function AttendancesPage() {
                         <div className="flex items-center gap-1.5">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                              isLate
+                              att.status === "EARLY_LEAVE"
+                                ? "bg-orange-500/15 text-orange-300 border-orange-500/30"
+                                : isLate
                                 ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
                                 : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                             }`}
                           >
-                            {isLate ? "មកយឺត (LATE)" : "ទាន់ពេល (GOOD)"}
+                            {att.status === "EARLY_LEAVE"
+                              ? "ចេញមុន (EARLY)"
+                              : isLate
+                              ? "មកយឺត (LATE)"
+                              : "ទាន់ពេល (GOOD)"}
                           </span>
                           {att.isManual && (
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
@@ -773,6 +791,9 @@ export default function AttendancesPage() {
                     } else if (d.dayStatus === "LATE") {
                       bg = "bg-amber-500/20 border-amber-500/40 text-amber-200 font-bold";
                       badge = "យឺត";
+                    } else if (d.dayStatus === "EARLY_LEAVE") {
+                      bg = "bg-orange-500/20 border-orange-500/40 text-orange-200 font-bold";
+                      badge = "ចេញមុន";
                     } else if (d.dayStatus === "ABSENT") {
                       bg = "bg-rose-500/20 border-rose-500/40 text-rose-200 font-bold";
                       badge = "អវត្តមាន";

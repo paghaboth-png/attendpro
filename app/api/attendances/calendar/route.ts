@@ -120,6 +120,9 @@ export async function GET(req: Request) {
           dayStatus = "LATE";
           lateCount++;
           presentCount++;
+        } else if (att.status === "EARLY_LEAVE") {
+          dayStatus = "EARLY_LEAVE";
+          presentCount++;
         } else {
           dayStatus = "GOOD";
           presentCount++;

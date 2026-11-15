@@ -117,6 +117,8 @@ export async function GET(req: Request) {
           ? "ទាន់ពេល (GOOD)"
           : att.status === "LATE"
           ? "មកយឺត (LATE)"
+          : att.status === "EARLY_LEAVE"
+          ? "ចេញមុនម៉ោង (EARLY)"
           : att.status;
 
       const row = sheet.addRow([

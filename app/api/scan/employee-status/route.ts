@@ -117,12 +117,6 @@ export async function GET(req: Request) {
       timeZone: "Asia/Phnom_Penh",
     });
 
-    // Check system settings for double scan cooldown (default 5 mins)
-    const delaySetting = await prisma.setting.findUnique({
-      where: { key: "qr_double_scan_delay_minutes" },
-    });
-    const cooldownMinutes = delaySetting ? parseInt(delaySetting.value) || 5 : 5;
-
     // Check today's attendance
     let attendance = await prisma.attendance.findUnique({
       where: {
@@ -179,24 +173,33 @@ export async function GET(req: Request) {
     const isLate = diffMinutes > graceMinutes;
     const expectedStatus = isLate ? `យឺត ${diffMinutes} នាទី` : "ទាន់ម៉ោង (On-time)";
 
-    // 6. Determine State
+    // Calculate Early Leave for Check-out
+    const shiftEndTime =
+      employee.shiftScheduleType === "CUSTOM" && employee.customEndTime
+        ? employee.customEndTime
+        : shift?.endTime || "16:00";
+    const [endH, endM] = shiftEndTime.split(":").map(Number);
+    const shiftEndTotalMin = endH * 60 + endM;
+
+    let isEarlyLeave = false;
+    if (shiftEndTotalMin >= shiftTotalMin) {
+      isEarlyLeave = currentTotalMin < shiftEndTotalMin;
+    } else {
+      // Overnight
+      isEarlyLeave = currentTotalMin < shiftEndTotalMin;
+    }
+
+    const checkOutExpectedStatus = isEarlyLeave
+      ? "ចេញមុនម៉ោង (EARLY_LEAVE)"
+      : "ត្រឹមត្រូវ (On-time)";
+
+    // 6. Determine State (No Cooldown - Check-out allowed immediately at any time!)
     let state = "READY_CHECK_IN";
-    let cooldownRemainingSeconds = 0;
 
     if (!attendance || !attendance.checkInAt) {
       state = "READY_CHECK_IN";
     } else if (attendance.checkInAt && !attendance.checkOutAt) {
-      // Checked in! Check 5-minute cooldown
-      const checkInTime = new Date(attendance.checkInAt).getTime();
-      const elapsedSeconds = Math.floor((now.getTime() - checkInTime) / 1000);
-      const cooldownSeconds = cooldownMinutes * 60;
-
-      if (elapsedSeconds < cooldownSeconds) {
-        state = "COOLDOWN_BLOCKED";
-        cooldownRemainingSeconds = cooldownSeconds - elapsedSeconds;
-      } else {
-        state = "READY_CHECK_OUT";
-      }
+      state = "READY_CHECK_OUT";
     } else if (attendance.checkInAt && attendance.checkOutAt) {
       state = "ALREADY_CHECKED_OUT";
     }
@@ -204,9 +207,9 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       state,
-      cooldownRemainingSeconds,
-      cooldownMinutes,
       expectedStatus,
+      checkOutExpectedStatus,
+      isEarlyLeave,
       isLate,
       currentPhnomPenhTime,
       date: phnomPenhDateStr,

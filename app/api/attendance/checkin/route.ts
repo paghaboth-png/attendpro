@@ -467,6 +467,16 @@ export async function POST(req: Request) {
         );
       }
 
+      // Check Early Leave
+      const personalEndTime =
+        employee.shiftScheduleType === "CUSTOM" && employee.customEndTime
+          ? employee.customEndTime
+          : shift?.endTime || "16:00";
+      const [endH, endM] = personalEndTime.split(":").map(Number);
+      const shiftEndTotalMinutes = endH * 60 + endM;
+
+      const isEarlyLeave = currentTotalMinutes < shiftEndTotalMinutes;
+
       const updated = await prisma.attendance.update({
         where: { id: targetAttendance.id },
         data: {
@@ -475,6 +485,7 @@ export async function POST(req: Request) {
           checkOutLng: userLng,
           checkOutAcc: userAcc,
           checkOutPhoto: photoUrl || null,
+          status: isEarlyLeave ? "EARLY_LEAVE" : targetAttendance.status,
         },
       });
 
@@ -484,7 +495,10 @@ export async function POST(req: Request) {
         status: updated.status,
         branchName: activeBranch.name,
         distance: distanceMeters,
-        message: "Check-out បានជោគជ័យ! សូមអរគុណសម្រាប់ការបំពេញការងារថ្ងៃនេះ 😊",
+        isEarlyLeave,
+        message: isEarlyLeave
+          ? "Check-out បានជោគជ័យ! (ចេញមុនម៉ោង)"
+          : "Check-out បានជោគជ័យ! សូមអរគុណសម្រាប់ការបំពេញការងារថ្ងៃនេះ 😊",
         time: nowLocal.toISOString(),
       });
     }

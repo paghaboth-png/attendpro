@@ -260,8 +260,8 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* 5 KPI Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 print:grid-cols-5">
+      {/* 6 KPI Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 print:grid-cols-6">
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 print:bg-white print:border-slate-300">
           <div className="text-[11px] text-slate-400 font-medium">វត្តមានសរុប (Records)</div>
           <div className="text-2xl font-black text-white print:text-slate-900 font-mono mt-1">
@@ -289,6 +289,16 @@ export default function ReportsPage() {
           </div>
           <div className="text-[10px] text-slate-500 mt-1">
             លើសម៉ោងអនុគ្រោះ
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 print:bg-white print:border-slate-300">
+          <div className="text-[11px] text-slate-400 font-medium">ចេញមុន (EARLY)</div>
+          <div className="text-2xl font-black text-orange-400 print:text-orange-700 font-mono mt-1">
+            {summary.earlyRecords || 0}
+          </div>
+          <div className="text-[10px] text-slate-500 mt-1">
+            មុនម៉ោងចេញវេន
           </div>
         </div>
 
@@ -397,6 +407,7 @@ export default function ReportsPage() {
                   <th className="py-3 px-3.5 text-center">ថ្ងៃវត្តមានសរុប</th>
                   <th className="py-3 px-3.5 text-center">ទាន់ពេល (Good)</th>
                   <th className="py-3 px-3.5 text-center">មកយឺត (Late)</th>
+                  <th className="py-3 px-3.5 text-center">ចេញមុន (Early)</th>
                   <th className="py-3 px-3.5 text-center">ច្បាប់ (Leaves)</th>
                   <th className="py-3 px-3.5 text-center">ថែមម៉ោង (OT)</th>
                   <th className="py-3 px-3.5 text-right">ម៉ោងធ្វើការសរុប</th>
@@ -426,6 +437,9 @@ export default function ReportsPage() {
                     </td>
                     <td className="py-3 px-3.5 text-center text-amber-400 print:text-amber-700 font-bold">
                       {emp.lateDays}
+                    </td>
+                    <td className="py-3 px-3.5 text-center text-orange-400 print:text-orange-700 font-bold">
+                      {emp.earlyDays || 0}
                     </td>
                     <td className="py-3 px-3.5 text-center text-blue-400 print:text-blue-700">
                       {emp.leaveDays} ថ្ងៃ
