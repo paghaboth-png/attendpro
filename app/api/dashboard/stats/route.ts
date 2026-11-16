@@ -227,6 +227,10 @@ export async function GET(req: Request) {
       }
     });
 
+    const totalDayOffCount = absentsAndOthersList.filter(
+      (item) => item.type === "DAYOFF"
+    ).length;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -243,7 +247,7 @@ export async function GET(req: Request) {
           absents: absentsCount,
           notYetStarted: notYetStartedCount,
           holiday: holidays.length,
-          dayoff: dayOffs.length,
+          dayoff: totalDayOffCount,
         },
         attendances,
         absentsAndOthers: absentsAndOthersList,

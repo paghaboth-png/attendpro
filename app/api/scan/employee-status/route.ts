@@ -170,8 +170,19 @@ export async function GET(req: Request) {
     const shiftTotalMin = shiftH * 60 + shiftM;
     const diffMinutes = currentTotalMin - shiftTotalMin;
 
-    const isLate = diffMinutes > graceMinutes;
-    const expectedStatus = isLate ? `យឺត ${diffMinutes} នាទី` : "ទាន់ម៉ោង (On-time)";
+    // Check scheduled workday vs off-day (Extra Day)
+    const phnomPenhDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
+    const currentDayOfWeek = String(phnomPenhDate.getDay()); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const scheduledDaysStr = employee.workingDays || shift?.workDays || "1,2,3,4,5";
+    const scheduledDaysList = scheduledDaysStr.split(",").map((d) => d.trim());
+    const isWorkdayToday = scheduledDaysList.includes(currentDayOfWeek);
+
+    const isLate = isWorkdayToday && diffMinutes > graceMinutes;
+    const expectedStatus = !isWorkdayToday
+      ? "ថ្ងៃបន្ថែម (Extra Day)"
+      : isLate
+      ? `យឺត ${diffMinutes} នាទី`
+      : "ទាន់ម៉ោង (On-time)";
 
     // Calculate Early Leave for Check-out
     const shiftEndTime =

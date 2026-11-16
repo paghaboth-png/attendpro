@@ -207,8 +207,16 @@ export async function POST(req: Request) {
     const shiftTotalMin = shiftH * 60 + shiftM;
     const diffMinutes = currentTotalMin - shiftTotalMin;
 
-    const isLate = diffMinutes > graceMinutes;
+    // Check scheduled workday vs off-day (Extra Day)
+    const phnomPenhDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
+    const currentDayOfWeek = String(phnomPenhDate.getDay()); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const scheduledDaysStr = employee.workingDays || shift?.workDays || "1,2,3,4,5";
+    const scheduledDaysList = scheduledDaysStr.split(",").map((d) => d.trim());
+    const isWorkdayToday = scheduledDaysList.includes(currentDayOfWeek);
+
+    const isLate = isWorkdayToday && diffMinutes > graceMinutes;
     const computedStatus = isLate ? "LATE" : "GOOD";
+    const extraDayNote = !isWorkdayToday ? "ថ្ងៃបន្ថែម (Extra Day)" : null;
 
     // Calculate Early Leave for Check-out
     const shiftEndTime =
@@ -255,6 +263,7 @@ export async function POST(req: Request) {
           method: "QR",
           deviceInfo: userAgent || null,
           status: computedStatus,
+          note: extraDayNote || undefined,
         },
         create: {
           employeeId: employee.id,
@@ -268,6 +277,7 @@ export async function POST(req: Request) {
           method: "QR",
           deviceInfo: userAgent || null,
           status: computedStatus,
+          note: extraDayNote || null,
         },
       });
 
@@ -287,7 +297,7 @@ export async function POST(req: Request) {
             code: employee.code,
             branch: branch.name,
             time: currentPhnomPenhTime,
-            statusText: "ទាន់ពេល (Good)",
+            statusText: !isWorkdayToday ? "ថ្ងៃបន្ថែម (Extra Day)" : "ទាន់ពេល (Good)",
           });
         }
       } catch {}
@@ -397,7 +407,9 @@ export async function POST(req: Request) {
       action: targetAction,
       message:
         targetAction === "CHECK_IN"
-          ? `Check-in ជោគជ័យ! (${isLate ? `យឺត ${diffMinutes} នាទី` : "ទាន់ម៉ោង"})`
+          ? !isWorkdayToday
+            ? "Check-in ជោគជ័យ! (ថ្ងៃបន្ថែម - Extra Day)"
+            : `Check-in ជោគជ័យ! (${isLate ? `យឺត ${diffMinutes} នាទី` : "ទាន់ម៉ោង"})`
           : targetAction === "UPDATE_CHECKOUT"
           ? `ធ្វើបច្ចុប្បន្នភាព Check-out ដោយជោគជ័យ!${isEarlyLeave ? " (ចេញមុនម៉ោង)" : ""}`
           : isEarlyLeave

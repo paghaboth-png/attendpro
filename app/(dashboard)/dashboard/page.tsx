@@ -45,6 +45,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(60);
+  const [activeDemoCount, setActiveDemoCount] = useState<number>(0);
+
+  // Check demo accounts status for Super Admin warning
+  useEffect(() => {
+    if ((session?.user as any)?.role === "SUPER_ADMIN") {
+      fetch("/api/admin/demo-accounts")
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success) {
+            setActiveDemoCount(json.activeCount || 0);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [session]);
 
   // Fetch branches
   useEffect(() => {
@@ -183,6 +198,32 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Super Admin Demo Accounts Warning Banner */}
+      {(session?.user as any)?.role === "SUPER_ADMIN" && activeDemoCount > 0 && (
+        <div className="bg-rose-500/10 border-2 border-rose-500/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-200 shadow-sm">
+          <div className="flex items-center gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-rose-500/20 text-rose-400 shrink-0">
+              <AlertCircle className="w-6 h-6 text-rose-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-rose-100">
+                ការព្រមានសុវត្ថិភាព Go-live៖ គណនីសាកល្បង (Demo Accounts) ចំនួន {activeDemoCount} នៅតែសកម្ម!
+              </p>
+              <p className="text-xs text-rose-300/90 mt-0.5">
+                សូមបិទដំណើរការគណនី Demo ទាំងអស់ (admin@demo.com, manager@demo.com, employee@demo.com) ជាបន្ទាន់ មុនពេលដាក់ឱ្យដំណើរការជាផ្លូវការ។
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/settings?tab=security"
+            className="shrink-0 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-sm transition flex items-center gap-1.5 self-end sm:self-auto"
+          >
+            <span>គ្រប់គ្រងក្នុង Settings</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
+
       {/* Top Filter and Live Controls */}
       <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">

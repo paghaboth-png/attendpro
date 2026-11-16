@@ -366,9 +366,11 @@ export async function POST(req: Request) {
       const [shiftH, shiftM] = personalStartTime.split(":").map(Number);
       const shiftStartTotalMinutes = shiftH * 60 + shiftM;
 
-      if (currentTotalMinutes > shiftStartTotalMinutes + personalGrace) {
+      if (isWorkdayToday && currentTotalMinutes > shiftStartTotalMinutes + personalGrace) {
         isLate = true;
       }
+
+      const extraDayNote = !isWorkdayToday ? "ថ្ងៃបន្ថែម (Extra Day)" : null;
 
       const attendance = await prisma.attendance.upsert({
         where: {
@@ -384,6 +386,7 @@ export async function POST(req: Request) {
           checkInAcc: userAcc,
           checkInPhoto: photoUrl || null,
           status: isLate ? "LATE" : "GOOD",
+          note: extraDayNote || undefined,
         },
         create: {
           employeeId: employee.id,
@@ -395,6 +398,7 @@ export async function POST(req: Request) {
           checkInAcc: userAcc,
           checkInPhoto: photoUrl || null,
           status: isLate ? "LATE" : "GOOD",
+          note: extraDayNote || null,
         },
       });
 
