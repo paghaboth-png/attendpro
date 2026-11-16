@@ -380,18 +380,32 @@ model SalaryHistory {
 }
 
 model TelegramConfig {
-  id                 String   @id @default(cuid())
-  companyId          String   @unique
-  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  botTokenEncrypted  String?
-  chatId             String?
-  isEnabled          Boolean  @default(false)
-  notifyLate         Boolean  @default(false)
-  notifyLeave        Boolean  @default(false)
-  notifyDaily        Boolean  @default(false)
-  dailySummaryTime   String   @default("18:00")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  companyId           String   @unique
+  company             Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  botTokenEncrypted   String?
+  chatId              String?
+  isEnabled           Boolean  @default(false)
+  notifyLate          Boolean  @default(false)
+  notifyLeave         Boolean  @default(false)
+  notifyDaily         Boolean  @default(false)
+  notifyAllCheckInOut Boolean  @default(false)
+  notifyAbsent        Boolean  @default(false)
+  dailySummaryTime    String   @default("18:00")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model TelegramLog {
+  id        String   @id @default(cuid())
+  type      String   // "CHECK_IN", "CHECK_OUT", "UPDATE_CHECKOUT", "LATE", "ABSENT", "LEAVE", "OVERTIME", "DAILY", "TEST"
+  status    String   // "SUCCESS" | "FAILED"
+  chatId    String?
+  error     String?  // Reason in Khmer
+  details   String?  // Summary of notification
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model RateLimitEntry {

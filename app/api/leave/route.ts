@@ -182,14 +182,16 @@ export async function POST(req: Request) {
         },
       });
 
-      // Dispatch Telegram notification (non-blocking)
-      dispatchTelegramNotification("LEAVE", {
-        name: employee.name,
-        code: employee.code,
-        date: `${fromDate} ដល់ ${toDate}`,
-        leaveType: leaveRequest.type.name,
-        reason: reason || "",
-      }).catch(() => {});
+      // Dispatch Telegram notification (awaited so Vercel does not freeze request)
+      try {
+        await dispatchTelegramNotification("LEAVE", {
+          name: employee.name,
+          code: employee.code,
+          date: `${fromDate} ដល់ ${toDate}`,
+          leaveType: leaveRequest.type.name,
+          reason: reason || "",
+        });
+      } catch {}
     } catch {}
 
     return NextResponse.json({

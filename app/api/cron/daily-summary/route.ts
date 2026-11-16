@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { dispatchTelegramNotification } from "@/lib/telegram";
+import { dispatchTelegramNotification, checkAndNotifyAbsentEmployees } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +72,11 @@ export async function GET(req: Request) {
       leave,
       absent,
     };
+
+    // Check absent employees if notifyAbsent is enabled
+    try {
+      await checkAndNotifyAbsentEmployees();
+    } catch {}
 
     // Dispatch Telegram message if configured & enabled
     await dispatchTelegramNotification("DAILY", summaryPayload);

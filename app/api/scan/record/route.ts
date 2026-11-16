@@ -271,9 +271,9 @@ export async function POST(req: Request) {
         },
       });
 
-      // Telegram notification
-      if (isLate) {
-        try {
+      // Telegram notification (await so Vercel does not terminate request)
+      try {
+        if (isLate) {
           await dispatchTelegramNotification("LATE", {
             name: employee.name,
             code: employee.code,
@@ -281,8 +281,16 @@ export async function POST(req: Request) {
             time: currentPhnomPenhTime,
             lateMinutes: diffMinutes,
           });
-        } catch {}
-      }
+        } else {
+          await dispatchTelegramNotification("CHECK_IN", {
+            name: employee.name,
+            code: employee.code,
+            branch: branch.name,
+            time: currentPhnomPenhTime,
+            statusText: "ទាន់ពេល (Good)",
+          });
+        }
+      } catch {}
 
     } else if (targetAction === "CHECK_OUT") {
       if (!attendance || !attendance.checkInAt) {
@@ -307,6 +315,17 @@ export async function POST(req: Request) {
           status: isEarlyLeave ? "EARLY_LEAVE" : attendance.status,
         },
       });
+
+      // Telegram notification (await so Vercel does not terminate request)
+      try {
+        await dispatchTelegramNotification("CHECK_OUT", {
+          name: employee.name,
+          code: employee.code,
+          branch: branch.name,
+          time: currentPhnomPenhTime,
+          isEarlyLeave,
+        });
+      } catch {}
 
     } else if (targetAction === "UPDATE_CHECKOUT") {
       if (!attendance) {
@@ -358,6 +377,17 @@ export async function POST(req: Request) {
             entity: `Attendance: ${employee.code}`,
             details: `បុគ្គលិក ${employee.name} (${employee.code}) បានធ្វើបច្ចុប្បន្នភាព Check-out ពី ${prevCheckout ? prevCheckout.toISOString() : "none"} ទៅ ${now.toISOString()}${isEarlyLeave ? " (ចេញមុនម៉ោង)" : ""}`,
           },
+        });
+      } catch {}
+
+      // Telegram notification (await so Vercel does not terminate request)
+      try {
+        await dispatchTelegramNotification("UPDATE_CHECKOUT", {
+          name: employee.name,
+          code: employee.code,
+          branch: branch.name,
+          time: currentPhnomPenhTime,
+          isEarlyLeave,
         });
       } catch {}
     }

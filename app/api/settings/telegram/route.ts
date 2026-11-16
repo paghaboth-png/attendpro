@@ -3,7 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encryptToken, decryptToken, maskToken } from "@/lib/encryption";
-import { testTelegramConnection, sendTelegramMessage } from "@/lib/telegram";
+import {
+  testTelegramConnection,
+  sendTelegramMessage,
+  recordTelegramLog,
+  checkAndNotifyAbsentEmployees,
+} from "@/lib/telegram";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +22,24 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
     }
 
-    const company = await prisma.company.findFirst({
-      include: { telegramConfig: true },
-    });
+    const [company, history] = await Promise.all([
+      prisma.company.findFirst({
+        include: { telegramConfig: true },
+      }),
+      prisma.telegramLog.findMany({
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          chatId: true,
+          error: true,
+          details: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
     const config = company?.telegramConfig;
 
@@ -34,11 +54,14 @@ export async function GET() {
           notifyLate: false,
           notifyLeave: false,
           notifyDaily: false,
+          notifyAllCheckInOut: false,
+          notifyAbsent: false,
           dailySummaryTime: "18:00",
           status: "NOT_CONFIGURED", // NOT_CONFIGURED | CONNECTED | ERROR
           botName: null,
           chatTitle: null,
         },
+        history,
       });
     }
 
@@ -54,9 +77,12 @@ export async function GET() {
         notifyLate: config.notifyLate,
         notifyLeave: config.notifyLeave,
         notifyDaily: config.notifyDaily,
+        notifyAllCheckInOut: Boolean(config.notifyAllCheckInOut),
+        notifyAbsent: Boolean(config.notifyAbsent),
         dailySummaryTime: config.dailySummaryTime || "18:00",
         status: config.isEnabled && config.chatId ? "CONNECTED" : "NOT_CONFIGURED",
       },
+      history,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -75,13 +101,15 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const {
-      action = "SAVE", // "SAVE" | "TEST" | "CHECK_STATUS"
+      action = "SAVE", // "SAVE" | "TEST" | "CHECK_STATUS" | "SEND_DAILY" | "CHECK_ABSENT"
       botToken,
       chatId,
       isEnabled,
       notifyLate,
       notifyLeave,
       notifyDaily,
+      notifyAllCheckInOut,
+      notifyAbsent,
       dailySummaryTime,
     } = body;
 
@@ -122,27 +150,43 @@ export async function POST(req: Request) {
       }
 
       const statusResult = await testTelegramConnection(activeToken, targetChatId);
+
+      // Auto update if supergroup migrated
+      if (statusResult.isMigrated && statusResult.newChatId) {
+        try {
+          await prisma.telegramConfig.updateMany({
+            where: { companyId: company.id },
+            data: { chatId: statusResult.newChatId },
+          });
+        } catch {}
+      }
+
       if (!statusResult.ok) {
         return NextResponse.json({
           success: false,
           error: statusResult.error,
           bot: statusResult.bot,
+          newChatId: statusResult.newChatId,
+          isMigrated: statusResult.isMigrated,
         });
       }
 
       return NextResponse.json({
         success: true,
-        message: `តភ្ជាប់ជោគជ័យ! Bot: @${statusResult.bot?.username} ${
-          statusResult.chat ? `| Group: "${statusResult.chat.title}"` : ""
-        }`,
+        message: statusResult.isMigrated
+          ? `Group ត្រូវបានប្តូរជា Supergroup! ប្រព័ន្ធបានអាប់ដេត Chat ID ថ្មីស្វ័យប្រវត្តិ៖ ${statusResult.newChatId}`
+          : `តភ្ជាប់ជោគជ័យ! Bot: @${statusResult.bot?.username} ${
+              statusResult.chat ? `| Group: "${statusResult.chat.title}"` : ""
+            }`,
         bot: statusResult.bot,
         chat: statusResult.chat,
+        newChatId: statusResult.newChatId,
+        isMigrated: statusResult.isMigrated,
       });
     }
 
     // 2. ACTION: TEST MESSAGE
     if (action === "TEST") {
-      // Rate limit test messages: 5 per 60 seconds
       const rate = checkRateLimit(`telegram_test:${userId}`, 5, 60);
       if (!rate.allowed) {
         return NextResponse.json(
@@ -168,24 +212,29 @@ export async function POST(req: Request) {
         });
       }
 
-      // Check status first to capture friendly error if not in group
-      const statusResult = await testTelegramConnection(activeToken, targetChatId);
-      if (!statusResult.ok) {
-        return NextResponse.json({
-          success: false,
-          error: statusResult.error,
-        });
-      }
-
       const testMsg = `✅ <b>AttendPro តភ្ជាប់ជោគជ័យ!</b>
 ប្រព័ន្ធគ្រប់គ្រងវត្តមាន TheDemo Coffee បានភ្ជាប់ទំនាក់ទំនងជាមួយ Telegram Group នេះរួចរាល់ហើយ។
 🕒 កាលបរិច្ឆេទ៖ ${new Date().toLocaleString("km-KH", { timeZone: "Asia/Phnom_Penh" })}`;
 
       const sendRes = await sendTelegramMessage(activeToken, targetChatId, testMsg);
+
+      await recordTelegramLog(
+        "TEST",
+        sendRes.ok ? "SUCCESS" : "FAILED",
+        sendRes.newChatId || targetChatId,
+        sendRes.ok
+          ? sendRes.isMigrated
+            ? "ជោគជ័យ (បានអាប់ដេត Chat ID ថ្មី)"
+            : null
+          : sendRes.error,
+        "ផ្ញើសារសាកល្បងដោយ Admin"
+      );
+
       if (!sendRes.ok) {
         return NextResponse.json({
           success: false,
           error: `មិនអាចផ្ញើសារបាន: ${sendRes.error}`,
+          newChatId: sendRes.newChatId,
         });
       }
 
@@ -194,17 +243,20 @@ export async function POST(req: Request) {
           userId,
           action: "TELEGRAM_TEST_SENT",
           entity: "TelegramConfig",
-          details: `បានផ្ញើសារសាកល្បងទៅ Group Chat ID: ${targetChatId}`,
+          details: `បានផ្ញើសារសាកល្បងទៅ Group Chat ID: ${sendRes.newChatId || targetChatId}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `✅ សារសាកល្បងត្រូវបានផ្ញើទៅកាន់ Group "${statusResult.chat?.title || targetChatId}" ដោយជោគជ័យ!`,
+        message: sendRes.isMigrated
+          ? `✅ សារសាកល្បងត្រូវបានផ្ញើជោគជ័យ! (Group បានប្តូរជា Supergroup ហើយប្រព័ន្ធបានអាប់ដេត Chat ID: ${sendRes.newChatId})`
+          : `✅ សារសាកល្បងត្រូវបានផ្ញើទៅកាន់ Group "${targetChatId}" ដោយជោគជ័យ!`,
+        newChatId: sendRes.newChatId,
       });
     }
 
-    // 3. ACTION: SEND_DAILY (Admin instant daily summary)
+    // 3. ACTION: SEND_DAILY
     if (action === "SEND_DAILY") {
       const rate = checkRateLimit(`telegram_daily:${userId}`, 5, 60);
       if (!rate.allowed) {
@@ -263,19 +315,29 @@ export async function POST(req: Request) {
       const absent = Math.max(0, totalEmployees - (present + leave));
 
       const dailyMsg = `📊 <b>សង្ខេបវត្តមានប្រចាំថ្ងៃ (${todayStr})</b>
-🏢 <b>សាខា៖</b> ${branch?.name || "THE ONE COFFEE (ស្វាយរៀង)"}
+🏢 <b>សាខា៖</b> ${branch?.name || "TheDemo Coffee"}
 👥 <b>បុគ្គលិកសរុប៖</b> ${totalEmployees} នាក់
 ✅ <b>មកទាន់ពេល៖</b> ${good} នាក់
 ⚠️ <b>មកយឺត៖</b> ${late} នាក់
 🏖️ <b>ច្បាប់ឈប់សម្រាក៖</b> ${leave} នាក់
 ❌ <b>អវត្តមាន៖</b> ${absent} នាក់
-<i>ផ្ញើដោយ Admin (សាកល្បងដោយផ្ទាល់) ម៉ោង ${nowLocal.toTimeString().slice(0, 5)}</i>`;
+<i>ផ្ញើដោយ Admin ម៉ោង ${nowLocal.toTimeString().slice(0, 5)}</i>`;
 
       const sendRes = await sendTelegramMessage(activeToken, targetChatId, dailyMsg);
+
+      await recordTelegramLog(
+        "DAILY",
+        sendRes.ok ? "SUCCESS" : "FAILED",
+        sendRes.newChatId || targetChatId,
+        sendRes.ok ? null : sendRes.error,
+        `សង្ខេបប្រចាំថ្ងៃ៖ ${todayStr}`
+      );
+
       if (!sendRes.ok) {
         return NextResponse.json({
           success: false,
           error: `មិនអាចផ្ញើសារសរុបបាន: ${sendRes.error}`,
+          newChatId: sendRes.newChatId,
         });
       }
 
@@ -284,17 +346,28 @@ export async function POST(req: Request) {
           userId,
           action: "TELEGRAM_DAILY_SENT",
           entity: "TelegramConfig",
-          details: `បានផ្ញើសារសរុបប្រចាំថ្ងៃដោយផ្ទាល់ទៅ Group Chat ID: ${targetChatId}`,
+          details: `បានផ្ញើសារសរុបប្រចាំថ្ងៃដោយផ្ទាល់ទៅ Group Chat ID: ${sendRes.newChatId || targetChatId}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `✅ សារសរុបប្រចាំថ្ងៃត្រូវបានផ្ញើទៅកាន់ Group "${targetChatId}" ដោយជោគជ័យ!`,
+        message: `✅ សារសរុបប្រចាំថ្ងៃត្រូវបានផ្ញើទៅកាន់ Group "${sendRes.newChatId || targetChatId}" ដោយជោគជ័យ!`,
+        newChatId: sendRes.newChatId,
       });
     }
 
-    // 4. ACTION: SAVE CONFIG
+    // 4. ACTION: CHECK_ABSENT
+    if (action === "CHECK_ABSENT") {
+      const absentNotified = await checkAndNotifyAbsentEmployees();
+      return NextResponse.json({
+        success: true,
+        message: `បានពិនិត្យបុគ្គលិកអវត្តមានរួចរាល់! បានផ្ញើសារជូនដំណឹង៖ ${absentNotified} នាក់`,
+        absentNotified,
+      });
+    }
+
+    // 5. ACTION: SAVE CONFIG
     let newEncryptedToken = currentConfig?.botTokenEncrypted;
     if (botToken && botToken.trim() && !botToken.startsWith("••••")) {
       newEncryptedToken = encryptToken(botToken.trim());
@@ -309,6 +382,8 @@ export async function POST(req: Request) {
         ...(notifyLate !== undefined && { notifyLate: Boolean(notifyLate) }),
         ...(notifyLeave !== undefined && { notifyLeave: Boolean(notifyLeave) }),
         ...(notifyDaily !== undefined && { notifyDaily: Boolean(notifyDaily) }),
+        ...(notifyAllCheckInOut !== undefined && { notifyAllCheckInOut: Boolean(notifyAllCheckInOut) }),
+        ...(notifyAbsent !== undefined && { notifyAbsent: Boolean(notifyAbsent) }),
         ...(dailySummaryTime !== undefined && { dailySummaryTime }),
       },
       create: {
@@ -319,6 +394,8 @@ export async function POST(req: Request) {
         notifyLate: Boolean(notifyLate),
         notifyLeave: Boolean(notifyLeave),
         notifyDaily: Boolean(notifyDaily),
+        notifyAllCheckInOut: Boolean(notifyAllCheckInOut),
+        notifyAbsent: Boolean(notifyAbsent),
         dailySummaryTime: dailySummaryTime || "18:00",
       },
     });
@@ -345,6 +422,8 @@ export async function POST(req: Request) {
         notifyLate: savedConfig.notifyLate,
         notifyLeave: savedConfig.notifyLeave,
         notifyDaily: savedConfig.notifyDaily,
+        notifyAllCheckInOut: savedConfig.notifyAllCheckInOut,
+        notifyAbsent: savedConfig.notifyAbsent,
         dailySummaryTime: savedConfig.dailySummaryTime,
       },
     });

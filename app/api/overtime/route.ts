@@ -103,13 +103,15 @@ export async function POST(req: Request) {
         },
       });
 
-      // Dispatch Telegram notification (non-blocking)
-      dispatchTelegramNotification("OVERTIME", {
-        name: employee.name,
-        code: employee.code,
-        hours,
-        reason: reason || "",
-      }).catch(() => {});
+      // Dispatch Telegram notification (awaited so Vercel does not freeze request)
+      try {
+        await dispatchTelegramNotification("OVERTIME", {
+          name: employee.name,
+          code: employee.code,
+          hours,
+          reason: reason || "",
+        });
+      } catch {}
     } catch {}
 
     return NextResponse.json({

@@ -398,18 +398,27 @@ export async function POST(req: Request) {
         },
       });
 
-      // Dispatch Telegram Alert if late (non-blocking)
-      if (isLate) {
-        const lateMinutes = Math.max(1, currentTotalMinutes - (shiftStartTotalMinutes + personalGrace));
-
-        dispatchTelegramNotification("LATE", {
-          name: employee.name,
-          code: employee.code,
-          branch: activeBranch.name,
-          time: `${String(currentHours).padStart(2, "0")}:${String(currentMinutes).padStart(2, "0")}`,
-          lateMinutes,
-        }).catch(() => {});
-      }
+      // Dispatch Telegram Alert (awaited before responding to avoid Vercel freeze)
+      try {
+        if (isLate) {
+          const lateMinutes = Math.max(1, currentTotalMinutes - (shiftStartTotalMinutes + personalGrace));
+          await dispatchTelegramNotification("LATE", {
+            name: employee.name,
+            code: employee.code,
+            branch: activeBranch.name,
+            time: `${String(currentHours).padStart(2, "0")}:${String(currentMinutes).padStart(2, "0")}`,
+            lateMinutes,
+          });
+        } else {
+          await dispatchTelegramNotification("CHECK_IN", {
+            name: employee.name,
+            code: employee.code,
+            branch: activeBranch.name,
+            time: `${String(currentHours).padStart(2, "0")}:${String(currentMinutes).padStart(2, "0")}`,
+            statusText: !isWorkdayToday ? "ថ្ងៃបន្ថែម/OT" : "ទាន់ពេល (GOOD)",
+          });
+        }
+      } catch {}
 
       return NextResponse.json({
         success: true,
@@ -488,6 +497,17 @@ export async function POST(req: Request) {
           status: isEarlyLeave ? "EARLY_LEAVE" : targetAttendance.status,
         },
       });
+
+      // Dispatch Telegram Alert for check-out
+      try {
+        await dispatchTelegramNotification("CHECK_OUT", {
+          name: employee.name,
+          code: employee.code,
+          branch: activeBranch.name,
+          time: `${String(currentHours).padStart(2, "0")}:${String(currentMinutes).padStart(2, "0")}`,
+          isEarlyLeave,
+        });
+      } catch {}
 
       return NextResponse.json({
         success: true,

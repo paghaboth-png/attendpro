@@ -135,6 +135,8 @@ export default function SettingsPage() {
   const [tgNotifyLate, setTgNotifyLate] = useState(false);
   const [tgNotifyLeave, setTgNotifyLeave] = useState(false);
   const [tgNotifyDaily, setTgNotifyDaily] = useState(false);
+  const [tgNotifyAllCheckInOut, setTgNotifyAllCheckInOut] = useState(false);
+  const [tgNotifyAbsent, setTgNotifyAbsent] = useState(false);
   const [tgDailySummaryTime, setTgDailySummaryTime] = useState("18:00");
   const [tgStatus, setTgStatus] = useState<"NOT_CONFIGURED" | "CONNECTED" | "ERROR">("NOT_CONFIGURED");
   const [tgStatusMsg, setTgStatusMsg] = useState<string | null>(null);
@@ -144,6 +146,32 @@ export default function SettingsPage() {
   const [tgTesting, setTgTesting] = useState(false);
   const [tgChecking, setTgChecking] = useState(false);
   const [tgDailySending, setTgDailySending] = useState(false);
+  const [tgCheckingAbsent, setTgCheckingAbsent] = useState(false);
+  const [tgHistory, setTgHistory] = useState<any[]>([]);
+
+  const fetchTelegramConfig = () => {
+    fetch("/api/settings/telegram")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          const td = json.data;
+          setTgBotToken(td.botTokenMasked || "");
+          setTgChatId(td.chatId || "");
+          setTgIsEnabled(Boolean(td.isEnabled));
+          setTgNotifyLate(Boolean(td.notifyLate));
+          setTgNotifyLeave(Boolean(td.notifyLeave));
+          setTgNotifyDaily(Boolean(td.notifyDaily));
+          setTgNotifyAllCheckInOut(Boolean(td.notifyAllCheckInOut));
+          setTgNotifyAbsent(Boolean(td.notifyAbsent));
+          setTgDailySummaryTime(td.dailySummaryTime || "18:00");
+          setTgStatus(td.status || "NOT_CONFIGURED");
+        }
+        if (json.history) {
+          setTgHistory(json.history);
+        }
+      })
+      .catch(() => {});
+  };
 
   const fetchSettings = () => {
     setLoading(true);
@@ -178,26 +206,10 @@ export default function SettingsPage() {
           setAllowEmployeeViewPayslip(Boolean(d.allowEmployeeViewPayslip));
         }
       })
-      .catch(() => {});
-
-    // Fetch Telegram Config
-    fetch("/api/settings/telegram")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && json.data) {
-          const td = json.data;
-          setTgBotToken(td.botTokenMasked || "");
-          setTgChatId(td.chatId || "");
-          setTgIsEnabled(Boolean(td.isEnabled));
-          setTgNotifyLate(Boolean(td.notifyLate));
-          setTgNotifyLeave(Boolean(td.notifyLeave));
-          setTgNotifyDaily(Boolean(td.notifyDaily));
-          setTgDailySummaryTime(td.dailySummaryTime || "18:00");
-          setTgStatus(td.status || "NOT_CONFIGURED");
-        }
-      })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetchTelegramConfig();
   };
 
   useEffect(() => {
@@ -379,6 +391,8 @@ export default function SettingsPage() {
           notifyLate: tgNotifyLate,
           notifyLeave: tgNotifyLeave,
           notifyDaily: tgNotifyDaily,
+          notifyAllCheckInOut: tgNotifyAllCheckInOut,
+          notifyAbsent: tgNotifyAbsent,
           dailySummaryTime: tgDailySummaryTime,
         }),
       });
@@ -389,6 +403,7 @@ export default function SettingsPage() {
           setTgBotToken(json.data.botTokenMasked);
         }
         setTgStatus(json.data?.isEnabled && json.data?.chatId ? "CONNECTED" : "NOT_CONFIGURED");
+        fetchTelegramConfig();
         setTimeout(() => setSuccessMsg(null), 4000);
       } else {
         setErrorMsg(json.error || "មិនអាចរក្សាទុក Telegram បានឡើយ");
@@ -414,11 +429,15 @@ export default function SettingsPage() {
         }),
       });
       const json = await res.json();
+      if (json.newChatId) {
+        setTgChatId(json.newChatId);
+      }
       if (json.success) {
         setTgStatus("CONNECTED");
         setTgBotInfo(json.bot);
         setTgChatInfo(json.chat);
         setTgStatusMsg(json.message);
+        fetchTelegramConfig();
       } else {
         setTgStatus("ERROR");
         setTgStatusMsg(json.error);
@@ -445,12 +464,17 @@ export default function SettingsPage() {
         }),
       });
       const json = await res.json();
+      if (json.newChatId) {
+        setTgChatId(json.newChatId);
+      }
       if (json.success) {
         setTgStatus("CONNECTED");
         setTgStatusMsg(json.message);
+        fetchTelegramConfig();
       } else {
         setTgStatus("ERROR");
         setTgStatusMsg(json.error);
+        fetchTelegramConfig();
       }
     } catch {
       setTgStatus("ERROR");
@@ -474,18 +498,46 @@ export default function SettingsPage() {
         }),
       });
       const json = await res.json();
+      if (json.newChatId) {
+        setTgChatId(json.newChatId);
+      }
       if (json.success) {
         setTgStatus("CONNECTED");
         setTgStatusMsg(json.message);
+        fetchTelegramConfig();
       } else {
         setTgStatus("ERROR");
         setTgStatusMsg(json.error);
+        fetchTelegramConfig();
       }
     } catch {
       setTgStatus("ERROR");
-      setTgStatusMsg("កំហុសក្នុងការតភ្ជាប់ទៅកាន់ Telegram");
+      setTgStatusMsg("កំហុសក្នុងការផ្ញើសារសរុប");
     } finally {
       setTgDailySending(false);
+    }
+  };
+
+  const handleCheckAbsent = async () => {
+    setTgCheckingAbsent(true);
+    setTgStatusMsg(null);
+    try {
+      const res = await fetch("/api/settings/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "CHECK_ABSENT" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTgStatusMsg(json.message);
+        fetchTelegramConfig();
+      } else {
+        setTgStatusMsg(json.error || "កំហុសក្នុងការពិនិត្យអវត្តមាន");
+      }
+    } catch {
+      setTgStatusMsg("កំហុសក្នុងការពិនិត្យអវត្តមាន");
+    } finally {
+      setTgCheckingAbsent(false);
     }
   };
 
@@ -1659,13 +1711,63 @@ export default function SettingsPage() {
                 <span>ប្រភេទនៃការជូនដំណឹង (Notification Triggers - ទុក OFF ជាមុន)</span>
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Trigger 1: Late checkin */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Trigger 1: All Check-in / Check-out */}
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="font-bold text-white text-xs">ជូនដំណឹងគ្រប់ Check-in / Check-out</div>
+                    <div className="text-[10px] text-slate-500">
+                      ឈ្មោះ, ម៉ោង, ទាន់ម៉ោង/យឺត/ថ្ងៃបន្ថែម/ចេញមុន
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tgNotifyAllCheckInOut}
+                    onClick={() => setTgNotifyAllCheckInOut(!tgNotifyAllCheckInOut)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      tgNotifyAllCheckInOut ? "bg-sky-600" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        tgNotifyAllCheckInOut ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Trigger 2: Absent Alert */}
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="font-bold text-white text-xs">ជូនដំណឹងពេលអវត្តមាន</div>
+                    <div className="text-[10px] text-slate-500">
+                      ក្រោយម៉ោងចូលវេន ១ ម៉ោង ដែលមិនទាន់ Check-in
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tgNotifyAbsent}
+                    onClick={() => setTgNotifyAbsent(!tgNotifyAbsent)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      tgNotifyAbsent ? "bg-sky-600" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        tgNotifyAbsent ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Trigger 3: Late checkin */}
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5 pr-2">
                     <div className="font-bold text-white text-xs">Check-in យឺត</div>
                     <div className="text-[10px] text-slate-500">
-                      ជូនដំណឹងពេលបុគ្គលិកស្កេនយឺត
+                      ជូនដំណឹងពេលបុគ្គលិកស្កេនយឺតលើសអនុគ្រោះ
                     </div>
                   </div>
                   <button
@@ -1685,9 +1787,9 @@ export default function SettingsPage() {
                   </button>
                 </div>
 
-                {/* Trigger 2: Leave & OT requests */}
+                {/* Trigger 4: Leave & OT requests */}
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 pr-2">
                     <div className="font-bold text-white text-xs">សុំច្បាប់ / OT ថ្មី</div>
                     <div className="text-[10px] text-slate-500">
                       ជូនដំណឹងពេលមានពាក្យស្នើសុំថ្មី
@@ -1710,9 +1812,9 @@ export default function SettingsPage() {
                   </button>
                 </div>
 
-                {/* Trigger 3: Daily Summary */}
+                {/* Trigger 5: Daily Summary */}
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between">
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 pr-2">
                     <div className="font-bold text-white text-xs">សរុបប្រចាំថ្ងៃ</div>
                     <div className="text-[10px] text-slate-500 flex items-center gap-1">
                       <span>ម៉ោង៖</span>
@@ -1745,7 +1847,7 @@ export default function SettingsPage() {
 
             {/* Action Buttons: Check Status, Send Test, Save */}
             <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handleCheckTelegram}
@@ -1773,7 +1875,17 @@ export default function SettingsPage() {
                   className="px-4 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-semibold text-xs flex items-center gap-1.5 transition disabled:opacity-50"
                 >
                   <Clock className={`w-3.5 h-3.5 ${tgDailySending ? "animate-spin" : ""}`} />
-                  <span>{tgDailySending ? "កំពុងផ្ញើ..." : "ផ្ញើសរុបប្រចាំថ្ងៃឥឡូវនេះ"}</span>
+                  <span>{tgDailySending ? "កំពុងផ្ញើ..." : "ផ្ញើសរុបប្រចាំថ្ងៃ"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCheckAbsent}
+                  disabled={tgCheckingAbsent}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-semibold text-xs flex items-center gap-1.5 transition disabled:opacity-50 border border-amber-500/30"
+                >
+                  <Clock className={`w-3.5 h-3.5 ${tgCheckingAbsent ? "animate-spin" : ""}`} />
+                  <span>{tgCheckingAbsent ? "កំពុងពិនិត្យ..." : "ពិនិត្យអវត្តមាន"}</span>
                 </button>
               </div>
 
@@ -1787,6 +1899,118 @@ export default function SettingsPage() {
               </button>
             </div>
           </form>
+
+          {/* Telegram Dispatch History Table (Last 10 entries) */}
+          <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-sky-400" />
+                  <span>ប្រវត្តិការផ្ញើ Telegram (១០ លើកចុងក្រោយ)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  ពិនិត្យមើលស្ថានភាពនៃការផ្ញើជោគជ័យ ឬមូលហេតុនៃការបរាជ័យ (មិនបង្ហាញ Bot Token ឡើយ)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchTelegramConfig}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>ធ្វើបច្ចុប្បន្នភាព</span>
+              </button>
+            </div>
+
+            {tgHistory.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                មិនទាន់មានប្រវត្តិការផ្ញើ Telegram នៅឡើយទេ
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] bg-slate-950/40">
+                      <th className="py-2.5 px-3">កាលបរិច្ឆេទ & ម៉ោង</th>
+                      <th className="py-2.5 px-3">ប្រភេទសារ</th>
+                      <th className="py-2.5 px-3">ព័ត៌មានលម្អិត</th>
+                      <th className="py-2.5 px-3">ស្ថានភាព</th>
+                      <th className="py-2.5 px-3">មូលហេតុ / លទ្ធផល</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-sans">
+                    {tgHistory.map((h: any) => {
+                      const isSuccess = h.status === "SUCCESS";
+                      return (
+                        <tr key={h.id} className="hover:bg-slate-800/30 transition">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-300 whitespace-nowrap">
+                            {new Date(h.createdAt).toLocaleString("km-KH", {
+                              timeZone: "Asia/Phnom_Penh",
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                              {h.type === "CHECK_IN"
+                                ? "Check-in"
+                                : h.type === "CHECK_OUT"
+                                ? "Check-out"
+                                : h.type === "UPDATE_CHECKOUT"
+                                ? "កែ Check-out"
+                                : h.type === "LATE"
+                                ? "យឺត (Late)"
+                                : h.type === "ABSENT"
+                                ? "អវត្តមាន (Absent)"
+                                : h.type === "LEAVE"
+                                ? "សុំច្បាប់"
+                                : h.type === "OVERTIME"
+                                ? "ថែមម៉ោង (OT)"
+                                : h.type === "DAILY"
+                                ? "សរុបប្រចាំថ្ងៃ"
+                                : h.type === "TEST"
+                                ? "សាកល្បង (Test)"
+                                : h.type}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-white text-xs max-w-[200px] truncate">
+                            {h.details || "-"}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 w-fit ${
+                                isSuccess
+                                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                  : "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                              }`}
+                            >
+                              {isSuccess ? (
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              ) : (
+                                <AlertCircle className="w-3 h-3 text-rose-400" />
+                              )}
+                              <span>{isSuccess ? "ជោគជ័យ" : "បរាជ័យ"}</span>
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-slate-300 max-w-[260px]">
+                            {h.error ? (
+                              <span className="text-rose-400">{h.error}</span>
+                            ) : (
+                              <span className="text-emerald-400">ផ្ញើទៅ Telegram បានជោគជ័យ</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           {/* Setup Guide in Khmer (Step-by-Step) */}
           <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-4">
