@@ -143,10 +143,24 @@ export async function POST(req: Request) {
         );
       }
 
+      const minLen = targetRole === "EMPLOYEE" ? 6 : 8;
       const finalPassword =
-        password && password.length >= 8 ? password : generateReadableTempPassword();
+        password && password.length >= minLen ? password : generateReadableTempPassword();
       createdTempPassword = finalPassword;
       const passwordHash = await bcrypt.hash(finalPassword, 10);
+
+      // Determine mustChangePassword
+      let mustChange = true;
+      if (targetRole === "EMPLOYEE") {
+        if (body.mustChangePassword !== undefined) {
+          mustChange = Boolean(body.mustChangePassword);
+        } else {
+          const forceSetting = await prisma.setting.findUnique({
+            where: { key: "force_employee_change_password" },
+          });
+          mustChange = forceSetting?.value === "true";
+        }
+      }
 
       const newUser = await prisma.user.create({
         data: {
@@ -155,7 +169,7 @@ export async function POST(req: Request) {
           name,
           passwordHash,
           role: targetRole,
-          mustChangePassword: true,
+          mustChangePassword: mustChange,
           isActive: true,
         },
       });

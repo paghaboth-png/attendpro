@@ -29,6 +29,14 @@ import {
   Trash2,
   RefreshCw,
   QrCode,
+  Download,
+  Printer,
+  Copy,
+  FileText,
+  Database,
+  AlertTriangle,
+  ShieldCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 import { compressLogoImage } from "@/lib/image-utils";
 
@@ -65,6 +73,8 @@ export default function SettingsPage() {
   const [defaultLanguage, setDefaultLanguage] = useState("km");
   const [requireQrCheckin, setRequireQrCheckin] = useState(false);
   const [enableDynamicQr, setEnableDynamicQr] = useState(false);
+  const [forceEmployeeChangePassword, setForceEmployeeChangePassword] = useState(false);
+  const [nextEmployeeCodeMode, setNextEmployeeCodeMode] = useState("CONTINUE");
 
   // Payroll Settings (for 8B)
   const [latePenaltyType, setLatePenaltyType] = useState("FIXED");
@@ -124,6 +134,102 @@ export default function SettingsPage() {
       setDemoMsg({ type: "error", text: "មានបញ្ហាបច្ចេកទេស" });
     } finally {
       setTogglingDemo(false);
+    }
+  };
+
+  // Recovery Codes state (9B)
+  const [recoveryStatus, setRecoveryStatus] = useState<any>(null);
+  const [generatedCodes, setGeneratedCodes] = useState<string[] | null>(null);
+  const [loadingRecovery, setLoadingRecovery] = useState(false);
+  const [recoveryMsg, setRecoveryMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const fetchRecoveryStatus = async () => {
+    try {
+      const res = await fetch("/api/admin/recovery-codes");
+      const json = await res.json();
+      if (json.success) {
+        setRecoveryStatus(json);
+      }
+    } catch {}
+  };
+
+  const handleGenerateRecoveryCodes = async () => {
+    if (
+      recoveryStatus?.hasCodes &&
+      !confirm(
+        "តើលោកអ្នកពិតជាចង់បង្កើតកូដស្តារថ្មីមែនទេ? កូដចាស់ៗទាំងអស់នឹងត្រូវលុបចោលដោយស្វ័យប្រវត្តិ។"
+      )
+    ) {
+      return;
+    }
+    setLoadingRecovery(true);
+    setRecoveryMsg(null);
+    try {
+      const res = await fetch("/api/admin/recovery-codes", { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setGeneratedCodes(json.codes);
+        setRecoveryMsg({ type: "success", text: json.message });
+        fetchRecoveryStatus();
+      } else {
+        setRecoveryMsg({ type: "error", text: json.error || "បរាជ័យក្នុងការបង្កើតកូដស្តារ" });
+      }
+    } catch {
+      setRecoveryMsg({ type: "error", text: "មានបញ្ហាបច្ចេកទេស" });
+    } finally {
+      setLoadingRecovery(false);
+    }
+  };
+
+  // Cleanup Demo Data state (9C)
+  const [cleanupModalOpen, setCleanupModalOpen] = useState(false);
+  const [cleanupPreview, setCleanupPreview] = useState<any>(null);
+  const [cleanupLoadingPreview, setCleanupLoadingPreview] = useState(false);
+  const [cleanupConfirmWord, setCleanupConfirmWord] = useState("");
+  const [cleanupDeleteMyAtt, setCleanupDeleteMyAtt] = useState(true);
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
+
+  const openCleanupModal = async () => {
+    setCleanupModalOpen(true);
+    setCleanupResult(null);
+    setCleanupError(null);
+    setCleanupConfirmWord("");
+    setCleanupLoadingPreview(true);
+    try {
+      const res = await fetch("/api/admin/cleanup-demo-data");
+      const json = await res.json();
+      if (json.success) {
+        setCleanupPreview(json.data);
+      }
+    } catch {}
+    setCleanupLoadingPreview(false);
+  };
+
+  const handleExecuteCleanup = async () => {
+    if (cleanupConfirmWord.trim() !== "លុប") return;
+    setCleaningUp(true);
+    setCleanupError(null);
+    try {
+      const res = await fetch("/api/admin/cleanup-demo-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmWord: cleanupConfirmWord.trim(),
+          deleteMyAttendances: cleanupDeleteMyAtt,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCleanupResult(json.summary);
+      } else {
+        setCleanupError(json.error || "បរាជ័យក្នុងការសម្អាតទិន្នន័យ");
+      }
+    } catch {
+      setCleanupError("មានបញ្ហាបច្ចេកទេស");
+    } finally {
+      setCleaningUp(false);
     }
   };
 
@@ -196,6 +302,8 @@ export default function SettingsPage() {
           setDefaultLanguage(d.defaultLanguage || "km");
           setRequireQrCheckin(Boolean(d.requireQrCheckin));
           setEnableDynamicQr(Boolean(d.enableDynamicQr));
+          setForceEmployeeChangePassword(Boolean(d.forceEmployeeChangePassword));
+          setNextEmployeeCodeMode(d.nextEmployeeCodeMode || "CONTINUE");
 
           setLatePenaltyType(d.latePenaltyType || "FIXED");
           setLatePenaltyAmount(d.latePenaltyAmount || 1.0);
@@ -219,6 +327,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === "security" && isSuperAdmin) {
       fetchDemoAccounts();
+      fetchRecoveryStatus();
     }
   }, [activeTab, isSuperAdmin]);
 
@@ -310,6 +419,8 @@ export default function SettingsPage() {
           defaultLanguage,
           requireQrCheckin,
           enableDynamicQr,
+          forceEmployeeChangePassword,
+          nextEmployeeCodeMode,
           latePenaltyType,
           latePenaltyAmount,
           absentPenaltyRate,
@@ -1385,6 +1496,70 @@ export default function SettingsPage() {
             </div>
           </form>
 
+          {/* Employee Password Policy Card */}
+          <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-4">
+            <div className="border-b border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-blue-400" />
+                <span>គោលការណ៍ពាក្យសម្ងាត់បុគ្គលិក (Employee Password Policy)</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                កំណត់ថាតើបុគ្គលិក (តួនាទី Employee) ត្រូវបង្ខំឱ្យប្តូរពាក្យសម្ងាត់ពេល Login ចូលលើកដំបូងដែរឬទេ
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+              <div className="space-y-1 pr-4">
+                <span className="text-xs font-semibold text-slate-200 flex items-center gap-2">
+                  <span>បង្ខំបុគ្គលិកប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង</span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      forceEmployeeChangePassword
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                    }`}
+                  >
+                    {forceEmployeeChangePassword ? "បើក (ON)" : "បិទ (OFF - លំនាំដើម)"}
+                  </span>
+                </span>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {forceEmployeeChangePassword
+                    ? "បុគ្គលិកដែលបង្កើតថ្មី ឬ Reset ពាក្យសម្ងាត់ នឹងត្រូវបង្ខំឱ្យប្តូរពាក្យសម្ងាត់ផ្ទាល់ខ្លួនពេលចូលលើកដំបូង។"
+                    : "បុគ្គលិកអាចប្រើពាក្យសម្ងាត់ដែល Admin បង្កើតឱ្យចូលប្រើបានភ្លាមៗដោយមិនបាច់បង្ខំប្តូរ (អាចប្តូរតាមចិត្តក្នុង Profile)។"}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  * គណនី Admin, Manager, និង Super Admin នៅតែត្រូវបង្ខំប្តូរពាក្យសម្ងាត់ជានិច្ចដើម្បីសុវត្ថិភាព។
+                </p>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={forceEmployeeChangePassword}
+                onClick={async () => {
+                  const newVal = !forceEmployeeChangePassword;
+                  setForceEmployeeChangePassword(newVal);
+                  try {
+                    await fetch("/api/settings", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ forceEmployeeChangePassword: newVal }),
+                    });
+                  } catch {}
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  forceEmployeeChangePassword ? "bg-blue-600" : "bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    forceEmployeeChangePassword ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Role Permissions Guide */}
           <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-4">
             <div className="border-b border-slate-800 pb-3">
@@ -1436,6 +1611,205 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Super Admin Sections (9B, 9C, 9D) */}
+          {isSuperAdmin && (
+            <>
+              {/* Super Admin: Recovery Codes Card (9B) */}
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-purple-500" />
+                      <span>កូដស្តារគណនី Super Admin (Account Recovery Codes)</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      សម្រាប់ប្រើប្រាស់ក្នុងករណីភ្លេចលេខសម្ងាត់ ឬបាត់បង់ការគ្រប់គ្រង (៨ កូដចៃដន្យ កូដមួយប្រើបានម្តង)
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={loadingRecovery}
+                    onClick={handleGenerateRecoveryCodes}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingRecovery ? "animate-spin" : ""}`} />
+                    <span>
+                      {loadingRecovery
+                        ? "កំពុងបង្កើត..."
+                        : recoveryStatus?.hasCodes
+                        ? "បង្កើតកូដស្តារថ្មី (ជំនួសកូដចាស់)"
+                        : "បង្កើតកូដស្តារថ្មី (៨ កូដ)"}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Status Banner */}
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        recoveryStatus?.hasCodes && recoveryStatus?.unusedCount > 0
+                          ? "bg-emerald-500 animate-pulse"
+                          : "bg-amber-500"
+                      }`}
+                    />
+                    <span className="text-slate-700 dark:text-slate-300">
+                      ស្ថានភាពកូដស្តារ៖{" "}
+                      <strong>
+                        {recoveryStatus?.hasCodes
+                          ? `មាន ${recoveryStatus.unusedCount} / ${recoveryStatus.totalCount} កូដមិនទាន់ប្រើ`
+                          : "មិនទាន់មានកូដស្តារ (សូមបង្កើត)"}
+                      </strong>
+                    </span>
+                  </div>
+                  {recoveryStatus?.createdAt && (
+                    <span className="text-[11px] text-slate-400">
+                      បង្កើតកាលពី: {new Date(recoveryStatus.createdAt).toLocaleDateString("km-KH")}
+                    </span>
+                  )}
+                </div>
+
+                {recoveryMsg && (
+                  <div
+                    className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                      recoveryMsg.type === "success"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                        : "bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-300"
+                    }`}
+                  >
+                    {recoveryMsg.type === "success" ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                    )}
+                    <span>{recoveryMsg.text}</span>
+                  </div>
+                )}
+
+                {/* One-time Generated Codes Display */}
+                {generatedCodes && (
+                  <div className="p-4 rounded-2xl bg-purple-500/10 border-2 border-purple-500/30 space-y-3 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 text-amber-400" />
+                          <span>កូដស្តារទាំង ៨ របស់អ្នក (បង្ហាញតែម្តងគត់!)</span>
+                        </h3>
+                        <p className="text-[11px] text-purple-200/80 mt-0.5">
+                          សូមចម្លង ឬបោះពុម្ពទុកជាការសម្ងាត់។ កូដទាំងនេះនឹងមិនបង្ហាញម្តងទៀតឡើយ។
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedCodes.join("\n"));
+                            alert("បានចម្លងកូដស្តារទាំង ៨ ដោយជោគជ័យ!");
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1 transition"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>ចម្លងទាំងអស់</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.print()}
+                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 border border-slate-700 transition"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>បោះពុម្ព</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-xs">
+                      {generatedCodes.map((code, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-xl bg-slate-950 border border-purple-500/40 text-center font-bold text-purple-200 select-all tracking-wider shadow-inner"
+                        >
+                          <span className="text-[9px] text-slate-500 block mb-0.5">#{idx + 1}</span>
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Super Admin: Backup Data Export Card (9B) */}
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Database className="w-4 h-4 text-emerald-500" />
+                      <span>Backup ទិន្នន័យប្រព័ន្ធ (Database Backup Export)</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      ទាញយកកញ្ចប់ទិន្នន័យពេញលេញ (បុគ្គលិក, វត្តមាន, ច្បាប់, OT, ប្រាក់ខែ) សម្រាប់រក្សាទុកជាសុវត្ថិភាព
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="/api/admin/backup-export?format=json"
+                      download
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>ទាញយក Backup (JSON)</span>
+                    </a>
+                    <a
+                      href="/api/admin/backup-export?format=csv"
+                      download
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition flex items-center gap-1.5"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>ទាញយក (CSV)</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    <strong>ការព្រមានសុវត្ថិភាព៖</strong> កញ្ចប់ Backup នេះផ្ទុកព័ត៌មានលម្អិតអំពីបុគ្គលិក កំណត់ត្រាវត្តមាន និងប្រាក់បៀវត្ស។ សូមរក្សាទុកឯកសារនេះក្នុងឧបករណ៍ ឬ Drive ដែលមានសុវត្ថិភាពខ្ពស់!
+                  </p>
+                </div>
+              </div>
+
+              {/* Super Admin: Cleanup Demo Data Card (9C) */}
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-rose-500/30 p-5 sm:p-6 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-500/20 pb-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-rose-400 flex items-center gap-2">
+                      <Trash2 className="w-4 h-4 text-rose-500" />
+                      <span>សម្អាតទិន្នន័យសាកល្បង (Clean Up Demo Data)</span>
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      លុបបុគ្គលិកសាកល្បង (EMP001-EMP010) និងកំណត់ត្រាសាកល្បងទាំងអស់ មុនពេលចាប់ផ្តើមដំណើរការអាជីវកម្មពិត
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={openCleanupModal}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/20 transition flex items-center gap-1.5 self-start sm:self-auto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>សម្អាតទិន្នន័យសាកល្បង</span>
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  មុខងារនេះនឹងលុបតែបុគ្គលិក និងកំណត់ត្រាសាកល្បងប៉ុណ្ណោះ ដោយ<strong>រក្សាទុកគណនី Super Admin (0969968839), EMP011, សាខា, វេនម៉ោង, ថ្ងៃបុណ្យ, Settings, Logo, Telegram និង QR Code</strong> ឱ្យនៅដដែល។
+                </p>
+              </div>
+            </>
+          )}
 
           {/* Super Admin: Manage Demo Accounts Card (Step ឃ) */}
           {isSuperAdmin && (
@@ -2072,6 +2446,181 @@ export default function SettingsPage() {
                 កញ្ចប់ Vercel Hobby (ឥតគិតថ្លៃ) គាំទ្រ Scheduled Cron ១ ដងក្នុងមួយថ្ងៃ (គិតតាមម៉ោង UTC)។ ដើម្បីឱ្យការផ្ញើសារសរុបប្រចាំថ្ងៃដំណើរការទៀងទាត់ម៉ោង ១៨:០០ ជារៀងរាល់ថ្ងៃ លោកអ្នកអាចប្រើប្រាស់សេវាឥតគិតថ្លៃដូចជា <b>cron-job.org</b> ឬ <b>GitHub Actions</b> ដោយគ្រាន់តែហៅទៅកាន់ Webhook របស់ AttendPro។
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clean Up Demo Data Modal (9C) */}
+      {cleanupModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 text-xs text-slate-300 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setCleanupModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  សម្អាតទិន្នន័យសាកល្បង (Clean Up Demo Data)
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  ត្រៀមប្រព័ន្ធមុនដាក់ឱ្យដំណើរការអាជីវកម្មពិត (Go-live)
+                </p>
+              </div>
+            </div>
+
+            {cleanupResult ? (
+              <div className="space-y-4 py-2 animate-fade-in">
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-sm text-emerald-200">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    <span>បានសម្អាតទិន្នន័យសាកល្បងដោយជោគជ័យ!</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-xs text-emerald-300/90 pt-1">
+                    <li>បានលុបបុគ្គលិកសាកល្បង៖ {cleanupResult.deletedEmployeesCount} នាក់</li>
+                    <li>បានលុបកំណត់ត្រាវត្តមាន៖ {cleanupResult.deletedAttendancesCount} ជួរ</li>
+                    <li>បានលុបច្បាប់សម្រាក៖ {cleanupResult.deletedLeavesCount} ជួរ</li>
+                    <li>បានលុបម៉ោងថែម OT៖ {cleanupResult.deletedOvertimesCount} ជួរ</li>
+                    <li>បានលុបតារាងប្រាក់ខែសាកល្បង៖ {cleanupResult.deletedPayrollsCount} ជួរ</li>
+                  </ul>
+                  <p className="text-[11px] text-emerald-400 pt-1 font-semibold">
+                    ✓ គណនី Super Admin, បុគ្គលិកភ្ជាប់ (EMP011), សាខា, វេន, Settings និង QR Code ត្រូវបានរក្សាទុកពេញលេញ។
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCleanupModalOpen(false);
+                    window.location.reload();
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition"
+                >
+                  យល់ព្រម និងផ្ទុកទំព័រឡើងវិញ
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cleanupError && (
+                  <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>{cleanupError}</span>
+                  </div>
+                )}
+
+                {/* Step 1: Pre-cleanup Auto-Backup */}
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                  <span className="font-bold text-white flex items-center gap-1.5 text-xs">
+                    <Database className="w-3.5 h-3.5 text-blue-400" />
+                    <span>ជំហានទី ១: ទាញយកកញ្ចប់ Backup ទិន្នន័យជាមុន</span>
+                  </span>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    មុននឹងលុបទិន្នន័យ សូមទាញយកឯកសារ Backup ដើម្បីការពារករណីចង់ពិនិត្យមើលទិន្នន័យចាស់ៗឡើងវិញ៖
+                  </p>
+                  <a
+                    href="/api/admin/backup-export?format=json"
+                    download
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 font-semibold text-xs transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>ទាញយក Backup ឥឡូវនេះ (JSON)</span>
+                  </a>
+                </div>
+
+                {/* Step 2: Warning Breakdown */}
+                {cleanupLoadingPreview ? (
+                  <div className="p-6 text-center text-slate-400 text-xs">
+                    កំពុងផ្ទុកព័ត៌មានទិន្នន័យ...
+                  </div>
+                ) : cleanupPreview ? (
+                  <div className="space-y-2.5">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 space-y-1 text-xs">
+                      <span className="font-bold text-rose-300 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>អ្វីដែលនឹងត្រូវលុប ({cleanupPreview.deleteCount} បុគ្គលិក)៖</span>
+                      </span>
+                      <p className="text-[11px] text-rose-200/80 leading-relaxed">
+                        • បុគ្គលិកសាកល្បង៖{" "}
+                        <strong>{cleanupPreview.employeesToDelete?.map((e: any) => `${e.name} (${e.code})`).join(", ") || "គ្មាន"}</strong>
+                      </p>
+                      <p className="text-[11px] text-rose-200/80">
+                        • កំណត់ត្រាពាក់ព័ន្ធ៖ វត្តមាន {cleanupPreview.recordsBreakdown?.attendances} ជួរ, ច្បាប់ {cleanupPreview.recordsBreakdown?.leaves} ជួរ, OT {cleanupPreview.recordsBreakdown?.overtimes} ជួរ, ប្រាក់ខែ {cleanupPreview.recordsBreakdown?.payrollItems} ជួរ។
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1 text-xs">
+                      <span className="font-bold text-emerald-300 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>អ្វីដែលនឹងត្រូវរក្សាទុក (មិនប៉ះពាល់)៖</span>
+                      </span>
+                      <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                        • គណនី Super Admin៖ <strong>{cleanupPreview.preserved?.superAdminName}</strong> ({cleanupPreview.preserved?.superAdminPhone})
+                        <br />
+                        • បុគ្គលិកភ្ជាប់៖ <strong>{cleanupPreview.preserved?.linkedEmployee}</strong>
+                        <br />
+                        • ការកំណត់៖ {cleanupPreview.preserved?.systemConfig}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Step 3: Checkbox for My Attendances */}
+                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={cleanupDeleteMyAtt}
+                    onChange={(e) => setCleanupDeleteMyAtt(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-0 cursor-pointer"
+                  />
+                  <span className="text-xs text-slate-200">
+                    លុបកំណត់ត្រាវត្តមានសាកល្បងរបស់ខ្ញុំ (EMP011) ផងដែរ ដើម្បីឱ្យវត្តមានចាប់ផ្តើមទទេស្អាត
+                  </span>
+                </label>
+
+                {/* Step 4: Confirm Word Input */}
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-rose-500/30 space-y-2">
+                  <label className="block text-xs font-semibold text-rose-300">
+                    សូមវាយពាក្យ "លុប" ដើម្បីបញ្ជាក់ការសម្អាត៖
+                  </label>
+                  <input
+                    type="text"
+                    value={cleanupConfirmWord}
+                    onChange={(e) => setCleanupConfirmWord(e.target.value)}
+                    placeholder='វាយពាក្យ "លុប" នៅទីនេះ'
+                    className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-rose-500"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    * ប្រតិបត្តិការនេះរត់ក្នុង Transaction តែមួយ ប្រសិនបើមានបញ្ហា វានឹង Rollback ត្រឡប់មកវិញដោយស្វ័យប្រវត្តិ។
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setCleanupModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cleanupConfirmWord.trim() !== "លុប" || cleaningUp}
+                    onClick={handleExecuteCleanup}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30 flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{cleaningUp ? "កំពុងសម្អាត..." : "បញ្ជាក់ការលុបទិន្នន័យសាកល្បង"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

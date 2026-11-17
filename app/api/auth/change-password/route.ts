@@ -8,8 +8,8 @@ import { z } from "zod";
 const ChangePasswordSchema = z
   .object({
     oldPassword: z.string().optional(),
-    newPassword: z.string().min(8, "ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៨ តួ"),
-    confirmPassword: z.string().min(8, "សូមបញ្ជាក់ពាក្យសម្ងាត់ថ្មី"),
+    newPassword: z.string().min(6, "ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៦ តួ"),
+    confirmPassword: z.string().min(6, "សូមបញ្ជាក់ពាក្យសម្ងាត់ថ្មី"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "ពាក្យសម្ងាត់ថ្មីទាំងពីរមិនដូចគ្នាទេ",
@@ -48,6 +48,17 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, error: "រកមិនឃើញគណនីអ្នកប្រើប្រាស់ឡើយ" },
         { status: 404 }
+      );
+    }
+
+    // Role-based password length policy: Admin/Manager requires 8+ chars, Employee requires 6+ chars
+    if (user.role !== "EMPLOYEE" && parsed.data.newPassword.length < 8) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "សម្រាប់គណនី Admin/Manager ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងតិច ៨ តួ",
+        },
+        { status: 400 }
       );
     }
 

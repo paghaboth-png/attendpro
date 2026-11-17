@@ -38,6 +38,11 @@ export async function POST(req: Request) {
       orderBy: { code: "asc" },
     });
 
+    const forceSetting = await prisma.setting.findUnique({
+      where: { key: "force_employee_change_password" },
+    });
+    const mustChange = forceSetting?.value === "true";
+
     const createdList: Array<{
       code: string;
       name: string;
@@ -81,7 +86,7 @@ export async function POST(req: Request) {
           name: emp.name,
           passwordHash,
           role: "EMPLOYEE",
-          mustChangePassword: true,
+          mustChangePassword: mustChange,
           isActive: true,
         },
       });
@@ -116,6 +121,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       createdCount: newlyCreated.length,
+      mustChangePassword: mustChange,
       accounts: createdList,
       message: `បានបង្កើតគណនី Login ដោយជោគជ័យសម្រាប់ ${newlyCreated.length} នាក់!`,
     });

@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ប្រព័ន្ធគ្រប់គ្រងវត្តមាន និងប្រាក់ខែបុគ្គលិក AttendPro (AttendPro HR & Payroll System)
 
-## Getting Started
+**AttendPro** គឺជាប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិកតាមរយៈ QR Code, កាលវិភាគការងារ, ការគ្រប់គ្រងច្បាប់សម្រាក, គណនាប្រាក់ខែស្វ័យប្រវត្តិតាមច្បាប់ការងារកម្ពុជា និងការជូនដំណឹងតាម Telegram Group ក្នុងពេលវេលាជាក់ស្តែង (Real-time)។
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌟 លក្ខណៈពិសេសចម្បងៗ (Key Features)
+
+1. **ស្កេនវត្តមានតាម QR Code (Smart QR Attendance)**
+   - គាំទ្រទាំង Dynamic Token (កូដប្រែប្រួលរៀងរាល់ ៣០ វិនាទីលើ Tablet/TV) និង Static Token (Poster A4 បិទជញ្ជាំង)។
+   - ផ្ទៀងផ្ទាត់ទីតាំង GPS Geofencing និងកាំចម្ងាយអនុញ្ញាតនៃសាខា។
+   - គ្មានការរារាំង Check-out (Check-out បានគ្រប់ពេល ជាមួយការកត់ត្រា Early Leave ប្រសិនបើចេញមុនម៉ោង)។
+2. **ការជូនដំណឹងតាម Telegram (Real-time Telegram Alerts)**
+   - ផ្ញើសារជូនដំណឹងភ្លាមៗទៅកាន់ Telegram Group ពេលបុគ្គលិក Check-in/Check-out។
+   - រាយការណ៍បុគ្គលិកមកទាន់ពេល, មកយឺត (Late), ឬចេញមុន (Early Leave)។
+3. **ការគ្រប់គ្រងបុគ្គលិក និងគណនី (Employee Management)**
+   - នាំចូល (Import) និងនាំចេញ (Export) ទិន្នន័យបុគ្គលិកតាមរយៈ Excel/CSV។
+   - បង្កើតគណនី Login ដោយស្វ័យប្រវត្តិជាមួយជម្រើស Password Policy (មិនបង្ខំប្តូរ Password)។
+   - កំណត់វេនការងារច្រើន (Multi-shift), ថ្ងៃធ្វើការ និងសាខាអនុញ្ញាត។
+4. **ការគ្រប់គ្រងច្បាប់ និងថ្ងៃឈប់សម្រាក (Leave & Holiday Management)**
+   - ស្នើសុំច្បាប់ និងអនុម័តច្បាប់តាមប្រព័ន្ធ។
+   - ប្រតិទិនថ្ងៃឈប់សម្រាកបុណ្យជាតិផ្លូវការនៅកម្ពុជា។
+5. **ប្រព័ន្ធគណនាប្រាក់ខែស្វ័យប្រវត្តិ (Cambodia Payroll Engine)**
+   - គណនាប្រាក់ខែគោល ប្រាក់ថែមម៉ោង (OT) ប្រាក់រង្វាន់ និងការកាត់ប្រាក់ផ្សេងៗ។
+   - បោះពុម្ពប័ណ្ណបើកប្រាក់បៀវត្សរ៍ (Payslip) ស្អាត និងទាញយកជារបាយការណ៍ Excel/PDF។
+6. **សុវត្ថិភាព និងការបម្រុងទុកទិន្នន័យ (Security & Backup)**
+   - ការពារគណនី Super Admin ជាមួយ Recovery Codes ចំនួន ៨ កូដ។
+   - ប្រព័ន្ធ Audit Log កត់ត្រាសកម្មភាពសំខាន់ៗទាំងអស់។
+   - Backup ទិន្នន័យជាទម្រង់ JSON និង CSV តាម UI ដោយមិនបាច់សរសេរកូដ។
+   - យន្តការ Point-in-time Restore ៧ ថ្ងៃលើ Neon Cloud Database។
+
+---
+
+## 🚀 បច្ចេកវិទ្យាដែលប្រើប្រាស់ (Tech Stack)
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: PostgreSQL (Neon Serverless)
+- **ORM**: Prisma ORM
+- **Authentication**: NextAuth.js
+- **Hosting & Deployment**: Vercel
+
+---
+
+## ⚙️ ការកំណត់ Environment Variables (គំរូសម្រាប់ Deployment)
+
+បង្កើតឯកសារ `.env` (ឬកំណត់ក្នុង Vercel Project Settings) ដោយប្រើទម្រង់គំរូដូចខាងក្រោម៖
+
+```env
+# Database Connection (Neon PostgreSQL)
+DATABASE_URL="postgresql://username:password@ep-sample-pooler.ap-southeast-1.aws.neon.tech/attendpro?sslmode=require"
+
+# NextAuth Configuration
+NEXTAUTH_URL="https://your-domain.com"
+NEXTAUTH_SECRET="your-generated-random-secret-key"
+
+# Telegram Bot Alerts (Optional)
+TELEGRAM_BOT_TOKEN="your_bot_token_from_botfather"
+TELEGRAM_CHAT_ID="your_telegram_group_chat_id"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> [!CAUTION]
+> ហាមដាច់ខាតមិនត្រូវ Commit ឯកសារ `.env` ពិត ឬបញ្ចេញលេខសម្ងាត់/Token ពិតទៅក្នុង Git Repository ឡើយ។
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ ការដំឡើង និងដំណើរការក្នុងម៉ាស៊ីន Local (Local Development)
 
-## Learn More
+```bash
+# ១. ដំឡើង Dependencies
+npm install
 
-To learn more about Next.js, take a look at the following resources:
+# ២. រៀបចំ Database Schema
+npx prisma db push
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# ៣. ដំណើរការ Server អភិវឌ្ឍន៍
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+បើក Browser ចូលទៅកាន់ [http://localhost:3000](http://localhost:3000)។
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📚 ឯកសារណែនាំបន្ថែម (Documentation)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [បញ្ជីត្រួតពិនិត្យដំណើរការជាផ្លូវការ (Go-Live Checklist)](file:///docs/go-live-checklist.md)
+- [ការណែនាំអំពីការ Backup និងស្តារទិន្នន័យ (Neon Backup & Restore Guide)](file:///docs/neon-backup-restore-guide.md)
+- [ការណែនាំអំពីការភ្ជាប់ឈ្មោះគេហទំព័រផ្ទាល់ខ្លួន (Custom Domain Guide)](file:///docs/custom-domain-guide.md)
+
+---
+
+## 📄 អាជ្ញាប័ណ្ណ (License)
+
+រក្សាសិទ្ធិគ្រប់យ៉ាង © 2026 AttendPro Cambodia។

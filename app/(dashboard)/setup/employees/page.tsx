@@ -29,6 +29,7 @@ import {
   Sparkles,
   UserCheck,
   Shield,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useI18n } from "@/lib/i18n";
@@ -110,10 +111,13 @@ export default function EmployeesPage() {
     linkExistingAdmin: false,
     linkedUserId: "",
     role: "EMPLOYEE",
+    mustChangePassword: false,
     isActive: true,
     hiddenInReport: false,
   });
 
+  const [forceSetting, setForceSetting] = useState(false);
+  const [nextCodeMode, setNextCodeMode] = useState<"CONTINUE" | "RESTART">("CONTINUE");
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const { data: session } = useSession();
   const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
@@ -135,6 +139,7 @@ export default function EmployeesPage() {
     username: string;
     tempPassword: string;
     name: string;
+    mustChangePassword?: boolean;
   } | null>(null);
   const [copiedPassword, setCopiedPassword] = useState(false);
 
@@ -178,6 +183,7 @@ export default function EmployeesPage() {
           username: data.username,
           tempPassword: data.tempPassword,
           name: data.employeeName,
+          mustChangePassword: data.mustChangePassword,
         });
         fetchData();
       } else {
@@ -215,8 +221,9 @@ export default function EmployeesPage() {
             "កូដបុគ្គលិក",
             "ឈ្មោះបុគ្គលិក",
             "Username សម្រាប់ចូល",
-            "ពាក្យសម្ងាត់បណ្តោះអាសន្ន",
+            "ពាក្យសម្ងាត់",
             "ស្ថានភាព",
+            "គោលការណ៍ពាក្យសម្ងាត់",
           ],
           ...(data.accounts || []).map((acc: any) => [
             acc.code,
@@ -224,6 +231,9 @@ export default function EmployeesPage() {
             acc.username,
             acc.tempPassword,
             acc.status === "CREATED" ? "បង្កើតថ្មី" : "មានគណនីស្រាប់",
+            data.mustChangePassword
+              ? "ត្រូវប្តូរពេលចូលដំបូង"
+              : "មិនបង្ខំប្តូរ (អាចចូលប្រើភ្លាម)",
           ]),
         ];
         const csvContent =
@@ -288,6 +298,17 @@ export default function EmployeesPage() {
           setAdminUsers(data.data.adminUsers);
         }
       }
+      fetch("/api/settings")
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.success && j.data) {
+            setForceSetting(Boolean(j.data.forceEmployeeChangePassword));
+            if (j.data.nextEmployeeCodeMode) {
+              setNextCodeMode(j.data.nextEmployeeCodeMode);
+            }
+          }
+        })
+        .catch(() => {});
     } catch {}
     setLoading(false);
   };
@@ -298,7 +319,24 @@ export default function EmployeesPage() {
 
   const openAddModal = () => {
     setEditingEmp(null);
-    const nextCode = `EMP${String(employees.length + 1).padStart(3, "0")}`;
+    let nextNum = 1;
+    const existingNums = employees
+      .map((e) => {
+        const m = (e.code || "").match(/(\d+)$/);
+        return m ? parseInt(m[1], 10) : null;
+      })
+      .filter((n): n is number => n !== null);
+
+    if (nextCodeMode === "RESTART") {
+      nextNum = 1;
+      while (existingNums.includes(nextNum)) {
+        nextNum++;
+      }
+    } else {
+      const max = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+      nextNum = max + 1;
+    }
+    const nextCode = `EMP${String(nextNum).padStart(3, "0")}`;
     const defaultShift = shifts[0];
     const initialDays = defaultShift?.workDays
       ? defaultShift.workDays.split(",").map((d: string) => d.trim())
@@ -332,6 +370,7 @@ export default function EmployeesPage() {
       linkExistingAdmin: false,
       linkedUserId: "",
       role: "EMPLOYEE",
+      mustChangePassword: forceSetting,
       isActive: true,
       hiddenInReport: false,
     });
@@ -379,6 +418,7 @@ export default function EmployeesPage() {
       linkExistingAdmin: !!emp.user && ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(emp.user.role),
       linkedUserId: emp.userId || "",
       role: emp.user?.role || "EMPLOYEE",
+      mustChangePassword: emp.user ? Boolean(emp.user.mustChangePassword) : forceSetting,
       isActive: emp.isActive,
       hiddenInReport: emp.hiddenInReport,
     });
@@ -469,6 +509,7 @@ export default function EmployeesPage() {
             username: data.username || formData.email || formData.phone || formData.code,
             tempPassword: data.tempPassword,
             name: data.data?.name || formData.name,
+            mustChangePassword: data.mustChangePassword,
           });
         }
         fetchData();
@@ -508,6 +549,47 @@ export default function EmployeesPage() {
       });
       const data = await res.json();
       if (data.success) {
+        if (data.accounts && data.accounts.length > 0) {
+          setBulkLoginsResult(data.accounts);
+
+          // Generate and trigger CSV download with UTF-8 BOM
+          const rows = [
+            [
+              "កូដបុគ្គលិក",
+              "ឈ្មោះបុគ្គលិក",
+              "Username សម្រាប់ចូល",
+              "ពាក្យសម្ងាត់",
+              "ស្ថានភាព",
+              "គោលការណ៍ពាក្យសម្ងាត់",
+            ],
+            ...data.accounts.map((acc: any) => [
+              acc.code,
+              acc.name,
+              acc.username,
+              acc.tempPassword,
+              acc.status === "CREATED" ? "បង្កើតថ្មី" : "មានគណនីស្រាប់",
+              data.mustChangePassword
+                ? "ត្រូវប្តូរពេលចូលដំបូង"
+                : "មិនបង្ខំប្តូរ (អាចចូលប្រើភ្លាម)",
+            ]),
+          ];
+          const csvContent =
+            "\uFEFF" +
+            rows.map((e: any[]) => e.map((c: any) => `"${c}"`).join(",")).join("\n");
+          const blob = new Blob([csvContent], {
+            type: "text/csv;charset=utf-8;",
+          });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.setAttribute(
+            "download",
+            `attendpro_imported_logins_${new Date().toISOString().slice(0, 10)}.csv`
+          );
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
         alert(data.message || "ការនាំចូលទិន្នន័យពី Excel បានជោគជ័យ!");
         fetchData();
       } else {
@@ -690,6 +772,17 @@ export default function EmployeesPage() {
             </>
           )}
 
+          {/* Template Download */}
+          <a
+            href="/api/employees/export?template=true"
+            download="attendpro_employees_template.xlsx"
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition shadow-xs"
+            title="ទាញយកឯកសារគំរូ Excel សម្រាប់បំពេញទិន្នន័យបុគ្គលិក"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-amber-400" />
+            <span>ទម្រង់គំរូ (Template)</span>
+          </a>
+
           {/* Excel Export */}
           <button
             type="button"
@@ -788,6 +881,45 @@ export default function EmployeesPage() {
       {/* Employees Grid */}
       {loading ? (
         <div className="p-12 text-center text-slate-400 text-xs">{t("loading")}</div>
+      ) : filtered.length === 0 ? (
+        <div className="p-12 text-center rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <Users className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-white">មិនទាន់មានបុគ្គលិកនៅឡើយទេ</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              សូមបន្ថែមបុគ្គលិកដំបូង ឬនាំចូលទិន្នន័យបុគ្គលិកតាមរយៈឯកសារ Excel
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-lg shadow-blue-600/30 flex items-center gap-2 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>បន្ថែមបុគ្គលិកដំបូង</span>
+            </button>
+            <a
+              href="/api/employees/export?template=true"
+              download="attendpro_employees_template.xlsx"
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-amber-400" />
+              <span>ទាញយកទម្រង់គំរូ Excel</span>
+            </a>
+            <button
+              type="button"
+              disabled={importing}
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
+            >
+              <Upload className="w-4 h-4 text-blue-400" />
+              <span>{importing ? "កំពុង Import..." : "នាំចូលពី Excel"}</span>
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((emp) => {
@@ -1706,7 +1838,9 @@ export default function EmployeesPage() {
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-[11px] font-medium text-slate-300">
-                                ពាក្យសម្ងាត់ (Password យ៉ាងតិច ៨ តួ) *
+                                {formData.role === "EMPLOYEE"
+                                  ? "ពាក្យសម្ងាត់ (Password យ៉ាងតិច ៦ តួ) *"
+                                  : "ពាក្យសម្ងាត់ (Password យ៉ាងតិច ៨ តួ) *"}
                               </label>
                               <button
                                 type="button"
@@ -1725,8 +1859,13 @@ export default function EmployeesPage() {
                             <div className="relative flex items-center">
                               <input
                                 type="text"
+                                minLength={formData.role === "EMPLOYEE" ? 6 : 8}
                                 required={formData.createLoginAccount && !formData.linkExistingAdmin && !editingEmp?.user}
-                                placeholder="យ៉ាងតិច ៨ តួ (ឧ. Attend#9k2m)"
+                                placeholder={
+                                  formData.role === "EMPLOYEE"
+                                    ? "យ៉ាងតិច ៦ តួ (ឧ. 123456 ឬ Attend#26)"
+                                    : "យ៉ាងតិច ៨ តួ (ឧ. Attend#9k2m)"
+                                }
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 className="w-full pl-3 pr-20 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white font-mono text-xs focus:outline-none focus:border-blue-500"
@@ -1745,9 +1884,31 @@ export default function EmployeesPage() {
                                 </button>
                               )}
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-1">
-                              បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង។
-                            </p>
+
+                            {/* Checkbox for force change password on first login */}
+                            <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                              <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.role === "EMPLOYEE" ? formData.mustChangePassword : true}
+                                  disabled={formData.role !== "EMPLOYEE"}
+                                  onChange={(e) =>
+                                    setFormData({ ...formData, mustChangePassword: e.target.checked })
+                                  }
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-0 cursor-pointer"
+                                />
+                                <span className="text-[11px] text-slate-300">
+                                  បង្ខំប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង
+                                </span>
+                              </label>
+                              <p className="text-[10px] text-slate-400 mt-0.5 ml-6">
+                                {formData.role === "EMPLOYEE"
+                                  ? formData.mustChangePassword
+                                    ? "បុគ្គលិកត្រូវប្តូរពាក្យសម្ងាត់ថ្មីពេល Login លើកដំបូង"
+                                    : "បុគ្គលិកអាចប្រើពាក្យសម្ងាត់នេះចូលបានភ្លាមៗ (មិនបង្ខំប្តូរទេ)"
+                                  : "* គណនី Admin និង Manager ត្រូវបង្ខំប្តូរពាក្យសម្ងាត់ជានិច្ចដើម្បីសុវត្ថិភាព"}
+                              </p>
+                            </div>
                           </div>
                         </>
                       )}
@@ -2114,7 +2275,10 @@ export default function EmployeesPage() {
               <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed flex items-start gap-1.5">
                 <AlertCircle className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400 mt-0.5" />
                 <span>
-                  <strong>ចំណាំ៖</strong> ពាក្យសម្ងាត់នេះបង្ហាញតែម្តងគត់។ បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរ Password ថ្មីដោយខ្លួនឯងភ្លាមៗពេលចូលលើកដំបូង។
+                  <strong>ចំណាំ៖</strong> ពាក្យសម្ងាត់នេះបង្ហាញតែម្តងគត់។{" "}
+                  {resetPasswordResult.mustChangePassword
+                    ? "បុគ្គលិកនឹងត្រូវតម្រូវឱ្យប្តូរ Password ថ្មីដោយខ្លួនឯងភ្លាមៗពេលចូលលើកដំបូង។"
+                    : "បុគ្គលិកអាចប្រើពាក្យសម្ងាត់នេះចូលប្រើបានភ្លាមៗ (អាចប្តូរតាមចិត្តក្នុង Profile គ្រប់ពេល)។"}
                 </span>
               </p>
             </div>

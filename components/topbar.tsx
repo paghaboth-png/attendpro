@@ -21,10 +21,12 @@ import {
   Check,
   Sun,
   Moon,
+  KeyRound,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme-provider";
 
 import { BranchQrModal } from "@/components/branch-qr-modal";
+import { ChangePasswordModal } from "@/components/change-password-modal";
 
 interface TopBarProps {
   onOpenSidebar: () => void;
@@ -38,6 +40,7 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [changePwOpen, setChangePwOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrBranchId, setQrBranchId] = useState<string | null>(null);
 
@@ -349,6 +352,20 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
                     </div>
                   </div>
 
+                  <div className="py-1 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setChangePwOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-purple-500" />
+                      <span>ប្តូរពាក្យសម្ងាត់ (Change Password)</span>
+                    </button>
+                  </div>
+
                   <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
                     <button
                       type="button"
@@ -365,6 +382,12 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
           </div>
         </div>
       </header>
+
+      {/* Change Password Modal (Self-service for all users) */}
+      <ChangePasswordModal
+        isOpen={changePwOpen}
+        onClose={() => setChangePwOpen(false)}
+      />
 
       {/* Unified Branch QR Code Modal */}
       {qrModalOpen && qrBranchId && (

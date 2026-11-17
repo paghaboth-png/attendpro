@@ -23,6 +23,9 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   // QR Check-in settings
   require_qr_checkin: "false", // OFF by default
   enable_dynamic_qr: "false",  // OFF by default
+  // Employee Security Policy
+  force_employee_change_password: "false", // OFF by default
+  next_employee_code_mode: "CONTINUE",     // CONTINUE or RESTART
 };
 
 export async function GET() {
@@ -90,6 +93,8 @@ export async function GET() {
         allowEmployeeViewPayslip: settingsMap.allow_employee_view_payslip === "true",
         requireQrCheckin: settingsMap.require_qr_checkin === "true",
         enableDynamicQr: settingsMap.enable_dynamic_qr === "true",
+        forceEmployeeChangePassword: settingsMap.force_employee_change_password === "true",
+        nextEmployeeCodeMode: settingsMap.next_employee_code_mode || "CONTINUE",
       },
     });
   } catch (error: any) {
@@ -131,6 +136,8 @@ export async function POST(req: Request) {
       allowEmployeeViewPayslip,
       requireQrCheckin,
       enableDynamicQr,
+      forceEmployeeChangePassword,
+      nextEmployeeCodeMode,
     } = body;
 
     let company = await prisma.company.findFirst();
@@ -197,6 +204,16 @@ export async function POST(req: Request) {
         key: "enable_dynamic_qr",
         value: String(Boolean(enableDynamicQr)),
       });
+    if (forceEmployeeChangePassword !== undefined)
+      updates.push({
+        key: "force_employee_change_password",
+        value: String(Boolean(forceEmployeeChangePassword)),
+      });
+    if (nextEmployeeCodeMode !== undefined)
+      updates.push({
+        key: "next_employee_code_mode",
+        value: String(nextEmployeeCodeMode),
+      });
 
     for (const item of updates) {
       await prisma.setting.upsert({
@@ -211,12 +228,34 @@ export async function POST(req: Request) {
     }
 
     // Write audit log
+    const auditDetailParts: string[] = [];
+    if (forceEmployeeChangePassword !== undefined) {
+      auditDetailParts.push(
+        `បាន${forceEmployeeChangePassword ? "បើក" : "បិទ"} ការកំណត់បង្ខំបុគ្គលិកប្តូរពាក្យសម្ងាត់ពេលចូលលើកដំបូង`
+      );
+    }
+    if (nextEmployeeCodeMode !== undefined) {
+      auditDetailParts.push(
+        `បានកំណត់របៀបលេខកូដបុគ្គលិកបន្ទាប់: ${nextEmployeeCodeMode}`
+      );
+    }
+    const otherKeys = updates
+      .filter(
+        (u) =>
+          u.key !== "force_employee_change_password" &&
+          u.key !== "next_employee_code_mode"
+      )
+      .map((u) => u.key);
+    if (otherKeys.length > 0) {
+      auditDetailParts.push(`កែប្រែ (${otherKeys.join(", ")})`);
+    }
+
     await prisma.auditLog.create({
       data: {
         userId: userId || null,
         action: "SETTING_CHANGE",
         entity: "Setting",
-        details: `បានកែប្រែការកំណត់ប្រព័ន្ធ (${updates.map((u) => u.key).join(", ")})`,
+        details: auditDetailParts.join("; ") || `បានកែប្រែការកំណត់ប្រព័ន្ធ`,
       },
     });
 

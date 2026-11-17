@@ -111,6 +111,7 @@ model User {
   resetTokenExpiry DateTime?
   employee     Employee?
   auditLogs    AuditLog[]
+  recoveryCodes RecoveryCode[]
 }
 
 model Shift {
@@ -414,4 +415,16 @@ model RateLimitEntry {
   attempts    Int       @default(0)
   lockedUntil DateTime?
   updatedAt   DateTime  @updatedAt
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }

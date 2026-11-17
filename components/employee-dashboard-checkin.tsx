@@ -14,7 +14,9 @@ import {
   ClockAlert,
   ArrowRight,
   ShieldCheck,
+  KeyRound,
 } from "lucide-react";
+import { ChangePasswordModal } from "@/components/change-password-modal";
 
 export function EmployeeDashboardCheckin() {
   const { data: session } = useSession();
@@ -24,6 +26,7 @@ export function EmployeeDashboardCheckin() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [currentTime, setCurrentTime] = useState("");
+  const [changePwOpen, setChangePwOpen] = useState(false);
 
   useEffect(() => {
     const updateClock = () => {
@@ -258,7 +261,7 @@ export function EmployeeDashboardCheckin() {
       </div>
 
       {/* Quick Access Tiles for Employee */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link
           href="/attendances"
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 shadow-sm transition flex items-center justify-between group"
@@ -312,7 +315,32 @@ export function EmployeeDashboardCheckin() {
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition" />
         </Link>
+
+        <button
+          type="button"
+          onClick={() => setChangePwOpen(true)}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-purple-500/50 shadow-sm transition flex items-center justify-between group text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-purple-600 transition">
+                ប្តូរពាក្យសម្ងាត់
+              </div>
+              <div className="text-[11px] text-slate-500">ផ្លាស់ប្តូរពាក្យសម្ងាត់ផ្ទាល់ខ្លួន</div>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-1 transition" />
+        </button>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={changePwOpen}
+        onClose={() => setChangePwOpen(false)}
+      />
     </div>
   );
 }

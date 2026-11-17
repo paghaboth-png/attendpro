@@ -64,6 +64,28 @@ export async function POST(req: Request) {
     const action = body.action || "DISABLE"; // "DISABLE" or "ENABLE"
     const targetState = action === "ENABLE";
 
+    if (action === "DISABLE") {
+      // Safeguard: Check if Super Admin has generated recovery codes
+      const superAdminsWithCodes = await prisma.user.findMany({
+        where: {
+          role: "SUPER_ADMIN",
+          isActive: true,
+          recoveryCodes: { some: { used: false } },
+        },
+      });
+
+      if (superAdminsWithCodes.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "ដើម្បីសុវត្ថិភាព មិនអាចបិទគណនីសាកល្បងបានឡើយ! សូមបង្កើត 'កូដស្តារគណនី (Recovery Codes)' ក្នុង Settings ➜ សុវត្ថិភាព ជាមុនសិន ដើម្បីធានាថាអ្នកនឹងមិនបាត់បង់ការគ្រប់គ្រងប្រព័ន្ធពេលភ្លេចពាក្យសម្ងាត់។",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     await prisma.user.updateMany({
       where: { email: { in: DEMO_EMAILS } },
       data: { isActive: targetState },

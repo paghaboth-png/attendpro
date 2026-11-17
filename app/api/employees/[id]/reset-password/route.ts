@@ -36,15 +36,42 @@ export async function POST(
       );
     }
 
-    // Generate readable 8-char random password (no O/0, I/l)
-    const tempPassword = generateReadableTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {}
+
+    const isEmployee = employee.user.role === "EMPLOYEE";
+    const minLen = isEmployee ? 6 : 8;
+
+    let finalPassword = generateReadableTempPassword();
+    if (
+      body.customPassword &&
+      typeof body.customPassword === "string" &&
+      body.customPassword.trim().length >= minLen
+    ) {
+      finalPassword = body.customPassword.trim();
+    }
+
+    let mustChange = true;
+    if (isEmployee) {
+      if (body.mustChangePassword !== undefined) {
+        mustChange = Boolean(body.mustChangePassword);
+      } else {
+        const forceSetting = await prisma.setting.findUnique({
+          where: { key: "force_employee_change_password" },
+        });
+        mustChange = forceSetting?.value === "true";
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(finalPassword, 10);
 
     await prisma.user.update({
       where: { id: employee.user.id },
       data: {
         passwordHash,
-        mustChangePassword: true,
+        mustChangePassword: mustChange,
         failedLoginAttempts: 0,
         lockedUntil: null,
       },
@@ -56,7 +83,7 @@ export async function POST(
         userId,
         action: "RESET_PASSWORD",
         entity: "User",
-        details: `Admin (${userName}) បាន Reset ពាក្យសម្ងាត់សម្រាប់បុគ្គលិក ${employee.code} (${employee.name})`,
+        details: `Admin (${userName}) បាន Reset ពាក្យសម្ងាត់សម្រាប់បុគ្គលិក ${employee.code} (${employee.name})${mustChange ? " [បង្ខំប្តូរ]" : " [មិនបង្ខំប្តូរ]"}`,
       },
     });
 
@@ -64,11 +91,12 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      tempPassword,
+      tempPassword: finalPassword,
+      mustChangePassword: mustChange,
       username,
       employeeName: employee.name,
       employeeCode: employee.code,
-      message: `បាន Reset ពាក្យសម្ងាត់បណ្តោះអាសន្នសម្រាប់បុគ្គលិក ${employee.name} ដោយជោគជ័យ!`,
+      message: `បាន Reset ពាក្យសម្ងាត់សម្រាប់បុគ្គលិក ${employee.name} ដោយជោគជ័យ!`,
     });
   } catch (error: any) {
     console.error("reset-password error:", error);
