@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { getNowPhnomPenh, formatYMD, getDaysInMonth } from "@/lib/date-utils";
+import { useCompany } from "@/lib/company-context";
 
 interface PayrollItem {
   id: string;
@@ -95,6 +96,7 @@ interface PayrollHistoryItem {
 
 export default function PayrollPage() {
   const { data: session } = useSession();
+  const { company } = useCompany();
   const userRole = (session?.user as any)?.role;
 
   // Active View / Step: "WORKFLOW" (with active payroll) | "GENERATOR" (Step 1) | "HISTORY_LIST"
@@ -1326,11 +1328,11 @@ export default function PayrollPage() {
                   onError={(e) => ((e.currentTarget as HTMLElement).style.display = "none")}
                 />
                 <div>
-                  <div className="text-xl font-black text-slate-900 tracking-tight">
-                    THEDEMO COFFEE & RESTAURANT
+                  <div className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                    {company.name || "AttendPro"}
                   </div>
                   <div className="text-xs text-slate-500">
-                    សាខា៖ {payslipItem.employee.branch?.name || "THE ONE COFFEE (ស្វាយរៀង)"}
+                    សាខា៖ {payslipItem.employee.branch?.name || "គ្រប់សាខា"}
                   </div>
                   <div className="text-sm font-bold text-blue-700 mt-1">
                     បង្កាន់ដៃបើកប្រាក់បៀវត្សរ៍ (OFFICIAL SALARY PAYSLIP)

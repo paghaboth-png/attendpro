@@ -27,7 +27,7 @@ export async function GET() {
     });
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = "AttendPro TheDemo Coffee";
+    workbook.creator = "AttendPro";
     workbook.created = new Date();
 
     const worksheet = workbook.addWorksheet("Salary Setup", {
@@ -37,7 +37,7 @@ export async function GET() {
     // Title
     worksheet.mergeCells("A1:I1");
     const titleCell = worksheet.getCell("A1");
-    titleCell.value = `តារាងកំណត់ប្រាក់ខែបុគ្គលិក - ${company?.name || "TheDemo Coffee"}`;
+    titleCell.value = `តារាងកំណត់ប្រាក់ខែបុគ្គលិក - ${company?.name || "AttendPro"}`;
     titleCell.font = { name: "Arial", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
     titleCell.fill = {
       type: "pattern",

@@ -5,7 +5,7 @@ require('dotenv').config();
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting AttendPro Database Seed for TheDemo Coffee...');
+  console.log('🌱 Starting AttendPro Database Seed for The ONE Coffee...');
 
   // 1. Create Company
   const company = await prisma.company.upsert({
@@ -13,9 +13,9 @@ async function main() {
     update: {},
     create: {
       id: 'company-demo-coffee',
-      name: 'TheDemo Coffee',
+      name: 'The ONE Coffee',
       phone: '+855 23 999 888',
-      email: 'info@thedemocoffee.com',
+      email: 'info@theonecoffee.com',
       address: 'រាជធានីភ្នំពេញ ព្រះរាជាណាចក្រកម្ពុជា',
     },
   });

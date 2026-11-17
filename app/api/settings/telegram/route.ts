@@ -119,7 +119,7 @@ export async function POST(req: Request) {
 
     if (!company) {
       company = await prisma.company.create({
-        data: { name: "TheDemo Coffee" },
+        data: { name: "The ONE Coffee" },
         include: { telegramConfig: true },
       });
     }
@@ -212,8 +212,10 @@ export async function POST(req: Request) {
         });
       }
 
+      const comp = await prisma.company.findFirst();
+      const companyName = comp?.name || "AttendPro";
       const testMsg = `✅ <b>AttendPro តភ្ជាប់ជោគជ័យ!</b>
-ប្រព័ន្ធគ្រប់គ្រងវត្តមាន TheDemo Coffee បានភ្ជាប់ទំនាក់ទំនងជាមួយ Telegram Group នេះរួចរាល់ហើយ។
+ប្រព័ន្ធគ្រប់គ្រងវត្តមាន ${companyName} បានភ្ជាប់ទំនាក់ទំនងជាមួយ Telegram Group នេះរួចរាល់ហើយ។
 🕒 កាលបរិច្ឆេទ៖ ${new Date().toLocaleString("km-KH", { timeZone: "Asia/Phnom_Penh" })}`;
 
       const sendRes = await sendTelegramMessage(activeToken, targetChatId, testMsg);
@@ -315,7 +317,7 @@ export async function POST(req: Request) {
       const absent = Math.max(0, totalEmployees - (present + leave));
 
       const dailyMsg = `📊 <b>សង្ខេបវត្តមានប្រចាំថ្ងៃ (${todayStr})</b>
-🏢 <b>សាខា៖</b> ${branch?.name || "TheDemo Coffee"}
+🏢 <b>សាខា៖</b> ${branch?.name || "គ្រប់សាខា (All Branches)"}
 👥 <b>បុគ្គលិកសរុប៖</b> ${totalEmployees} នាក់
 ✅ <b>មកទាន់ពេល៖</b> ${good} នាក់
 ⚠️ <b>មកយឺត៖</b> ${late} នាក់

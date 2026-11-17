@@ -117,7 +117,7 @@ export default function LoginPage() {
             AttendPro
           </h1>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-            {t("companyDefault")} • {t("systemTagline")}
+            {t("systemTagline")}
           </p>
         </div>
 
@@ -269,7 +269,7 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <div className="text-center mt-6 text-xs text-slate-500">
-          TheDemo Coffee • AttendPro Attendance Management v1.0
+          AttendPro Attendance Management v1.0
         </div>
       </div>
 

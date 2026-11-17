@@ -33,20 +33,23 @@ export async function GET(req: Request) {
     };
     if (branchId !== "all") attWhere.branchId = branchId;
 
-    const attendances = await prisma.attendance.findMany({
-      where: attWhere,
-      include: {
-        employee: {
-          include: { branch: true, department: true, position: true },
+    const [attendances, company] = await Promise.all([
+      prisma.attendance.findMany({
+        where: attWhere,
+        include: {
+          employee: {
+            include: { branch: true, department: true, position: true },
+          },
+          branch: true,
         },
-        branch: true,
-      },
-      orderBy: [{ date: "asc" }, { employee: { code: "asc" } }],
-    });
+        orderBy: [{ date: "asc" }, { employee: { code: "asc" } }],
+      }),
+      prisma.company.findFirst(),
+    ]);
 
     // Create Excel Workbook
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = "AttendPro - TheDemo Coffee";
+    workbook.creator = "AttendPro";
     workbook.created = new Date();
 
     const sheet = workbook.addWorksheet("របាយការណ៍វត្តមាន");
@@ -54,7 +57,7 @@ export async function GET(req: Request) {
     // Title Row
     sheet.mergeCells("A1:H1");
     const titleCell = sheet.getCell("A1");
-    titleCell.value = `របាយការណ៍វត្តមានបុគ្គលិក — TheDemo Coffee (${startDate} ដល់ ${endDate})`;
+    titleCell.value = `របាយការណ៍វត្តមានបុគ្គលិក — ${company?.name || "AttendPro"} (${startDate} ដល់ ${endDate})`;
     titleCell.font = { name: "Arial", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
     titleCell.fill = {
       type: "pattern",

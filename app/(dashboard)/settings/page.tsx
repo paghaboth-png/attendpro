@@ -51,7 +51,7 @@ export default function SettingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Company info
-  const [companyName, setCompanyName] = useState("TheDemo Coffee");
+  const [companyName, setCompanyName] = useState("");
   const [companyPhone, setCompanyPhone] = useState("012999001");
   const [companyEmail, setCompanyEmail] = useState("info@demo.com");
   const [companyAddress, setCompanyAddress] = useState(
@@ -287,7 +287,7 @@ export default function SettingsPage() {
         if (json.success && json.data) {
           const d = json.data;
           if (d.company) {
-            setCompanyName(d.company.name || "TheDemo Coffee");
+            setCompanyName(d.company.name || "");
             setCompanyPhone(d.company.phone || "");
             setCompanyEmail(d.company.email || "");
             setCompanyAddress(d.company.address || "");

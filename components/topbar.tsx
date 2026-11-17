@@ -119,7 +119,7 @@ export function TopBar({ onOpenSidebar }: TopBarProps) {
   const userRole = user?.role || "EMPLOYEE";
   const userName = user?.name || "User";
   const userEmail = user?.email || "";
-  const branchName = user?.branchName || "TheDemo Coffee";
+  const branchName = user?.branchName || "គ្រប់សាខា";
 
   return (
     <>

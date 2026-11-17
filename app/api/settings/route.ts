@@ -36,7 +36,7 @@ export async function GET() {
         success: true,
         data: {
           company: {
-            name: "TheDemo Coffee",
+            name: "The ONE Coffee",
             phone: "012999001",
             email: "info@demo.com",
             address: "ខេត្តស្វាយរៀង",
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
     if (!company) {
       company = await prisma.company.create({
         data: {
-          name: "TheDemo Coffee",
+          name: "The ONE Coffee",
         },
       });
     }

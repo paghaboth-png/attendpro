@@ -20,7 +20,7 @@ interface CompanyContextType {
 }
 
 const defaultCompany: CompanyData = {
-  name: "TheDemo Coffee",
+  name: "",
   logoUrl: null,
   phone: "012999001",
   email: "info@demo.com",
@@ -47,7 +47,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         const c = json.data.company;
         setCompany({
           id: c.id,
-          name: c.name || "TheDemo Coffee",
+          name: c.name || "",
           logoUrl: c.logoUrl ? `/api/company/logo?v=${Date.now()}` : null,
           phone: c.phone || "",
           email: c.email || "",

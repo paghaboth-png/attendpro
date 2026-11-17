@@ -126,6 +126,7 @@ export default function CheckinPage() {
   // System Settings State (Selfie & QR Requirement)
   const [requireSelfie, setRequireSelfie] = useState(false);
   const [requireQrCheckin, setRequireQrCheckin] = useState(false);
+  const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -134,6 +135,9 @@ export default function CheckinPage() {
         if (json.success && json.data) {
           setRequireSelfie(Boolean(json.data.requireSelfie));
           setRequireQrCheckin(Boolean(json.data.requireQrCheckin));
+          if (json.data.company?.name) {
+            setCompanyName(json.data.company.name);
+          }
         }
       })
       .catch(() => {});
@@ -383,7 +387,9 @@ export default function CheckinPage() {
             </div>
             <div>
               <div className="font-bold text-sm text-slate-900 dark:text-white">AttendPro Mobile</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">TheDemo Coffee</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                {companyName || "ប្រព័ន្ធកត់ត្រាវត្តមាន"}
+              </div>
             </div>
           </Link>
 

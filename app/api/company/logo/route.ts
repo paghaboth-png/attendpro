@@ -209,7 +209,7 @@ export async function POST(req: Request) {
     let company = await prisma.company.findFirst();
     if (!company) {
       company = await prisma.company.create({
-        data: { name: "TheDemo Coffee", logoUrl: dataUrl },
+        data: { name: "The ONE Coffee", logoUrl: dataUrl },
       });
     } else {
       company = await prisma.company.update({

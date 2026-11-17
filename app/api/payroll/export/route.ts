@@ -90,7 +90,7 @@ export async function GET(req: Request) {
     // 1. Title Banner
     sheet.mergeCells("A1:Q1");
     const titleCell = sheet.getCell("A1");
-    titleCell.value = `${company?.name || "TheDemo Coffee"} - តារាងទូទាត់ប្រាក់បៀវត្សរ៍ប្រចាំខែ (Monthly Payroll)`;
+    titleCell.value = `${company?.name || "AttendPro"} - តារាងទូទាត់ប្រាក់បៀវត្សរ៍ប្រចាំខែ (Monthly Payroll)`;
     titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFFFFFFF" } };
     titleCell.fill = {
       type: "pattern",

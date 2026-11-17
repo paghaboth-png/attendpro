@@ -59,7 +59,7 @@ export async function GET(
       success: true,
       data: {
         branchName: branch.name,
-        companyName: branch.company?.name || "TheDemo Coffee",
+        companyName: branch.company?.name || "AttendPro",
         companyLogo: branch.company?.logoUrl || null,
         dynamicToken,
         scanUrl,

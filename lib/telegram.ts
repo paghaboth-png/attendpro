@@ -349,6 +349,9 @@ export async function dispatchTelegramNotification(
 
     let messageText = "";
     let logDetail = "";
+    const systemFooter = company?.name
+      ? `<i>ប្រព័ន្ធ AttendPro • ${company.name}</i>`
+      : `<i>ប្រព័ន្ធ AttendPro</i>`;
 
     if (type === "LATE") {
       logDetail = `យឺត៖ ${payload.name} (${payload.code}) +${payload.lateMinutes}mn`;
@@ -357,7 +360,7 @@ export async function dispatchTelegramNotification(
 🏢 <b>សាខា៖</b> ${payload.branch}
 ⏰ <b>ម៉ោងស្កេន៖</b> ${payload.time}
 ⏳ <b>យឺត៖</b> +${payload.lateMinutes} នាទី
-<i>ប្រព័ន្ធ AttendPro TheDemo Coffee</i>`;
+${systemFooter}`;
     } else if (type === "CHECK_IN") {
       logDetail = `Check-in៖ ${payload.name} (${payload.code}) ${payload.statusText || ""}`;
       messageText = `✅ <b>ដំណឹងបុគ្គលិក Check-in</b>
@@ -365,7 +368,7 @@ export async function dispatchTelegramNotification(
 🏢 <b>សាខា៖</b> ${payload.branch}
 ⏰ <b>ម៉ោងស្កេន៖</b> ${payload.time}
 📌 <b>ស្ថានភាព៖</b> ${payload.statusText || "ទាន់ពេល (Good)"}
-<i>ប្រព័ន្ធ AttendPro TheDemo Coffee</i>`;
+${systemFooter}`;
     } else if (type === "CHECK_OUT") {
       const statusText = payload.isEarlyLeave ? "ចេញមុនម៉ោង (EARLY_LEAVE)" : "ធម្មតា";
       logDetail = `Check-out៖ ${payload.name} (${payload.code}) ${statusText}`;
@@ -374,7 +377,7 @@ export async function dispatchTelegramNotification(
 🏢 <b>សាខា៖</b> ${payload.branch}
 ⏰ <b>ម៉ោងស្កេន៖</b> ${payload.time}
 📌 <b>ស្ថានភាព៖</b> ${statusText}
-<i>ប្រព័ន្ធ AttendPro TheDemo Coffee</i>`;
+${systemFooter}`;
     } else if (type === "UPDATE_CHECKOUT") {
       const statusText = payload.isEarlyLeave ? "ចេញមុនម៉ោង (EARLY_LEAVE)" : "ធម្មតា";
       logDetail = `កែ Check-out៖ ${payload.name} (${payload.code}) ${statusText}`;
@@ -383,7 +386,7 @@ export async function dispatchTelegramNotification(
 🏢 <b>សាខា៖</b> ${payload.branch}
 ⏰ <b>ម៉ោងស្កេនថ្មី៖</b> ${payload.time}
 📌 <b>ស្ថានភាព៖</b> ${statusText}
-<i>ប្រព័ន្ធ AttendPro TheDemo Coffee</i>`;
+${systemFooter}`;
     } else if (type === "ABSENT") {
       logDetail = `អវត្តមាន៖ ${payload.name} (${payload.code})`;
       messageText = `❌ <b>ដំណឹងបុគ្គលិកអវត្តមាន (មិនទាន់ Check-in)</b>
@@ -391,7 +394,7 @@ export async function dispatchTelegramNotification(
 🏢 <b>សាខា៖</b> ${payload.branch}
 ⏰ <b>ម៉ោងចូលវេន៖</b> ${payload.shiftStartTime}
 ⏳ <b>ស្ថានភាព៖</b> លើស ១ ម៉ោង មិនទាន់ឃើញស្កេនវត្តមាន
-<i>ប្រព័ន្ធ AttendPro TheDemo Coffee</i>`;
+${systemFooter}`;
     } else if (type === "LEAVE") {
       logDetail = `សុំច្បាប់៖ ${payload.name} (${payload.leaveType})`;
       messageText = `📋 <b>មានសំណើសុំច្បាប់ថ្មី</b>
@@ -540,7 +543,7 @@ export async function checkAndNotifyAbsentEmployees(): Promise<number> {
         await dispatchTelegramNotification("ABSENT", {
           name: emp.name,
           code: emp.code,
-          branch: emp.branch?.name || "TheDemo Coffee",
+          branch: emp.branch?.name || "គ្រប់សាខា",
           shiftStartTime,
         });
         absentCount++;

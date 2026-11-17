@@ -36,7 +36,7 @@ export async function GET(req: Request) {
         lat: b.lat,
         lng: b.lng,
         radiusMeters: b.radiusMeters,
-        companyName: b.company?.name || "TheDemo Coffee",
+        companyName: b.company?.name || "AttendPro",
         companyLogo: b.company?.logoUrl || null,
         isDynamic: result.isDynamic,
       },

@@ -14,7 +14,7 @@ export interface Translations {
 export const dictionary = {
   // Brand & Common
   appName: { km: "AttendPro", en: "AttendPro" },
-  companyDefault: { km: "TheDemo Coffee", en: "TheDemo Coffee" },
+  companyDefault: { km: "", en: "" },
   systemTagline: { km: "ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិក", en: "Employee Attendance System" },
   loading: { km: "កំពុងដំណើរការ...", en: "Loading..." },
   logout: { km: "ចាកចេញ", en: "Sign Out" },

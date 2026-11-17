@@ -20,9 +20,11 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { DatePicker } from "@/components/date-picker";
+import { useCompany } from "@/lib/company-context";
 
 export default function ReportsPage() {
   const { t } = useI18n();
+  const { company } = useCompany();
 
   // Phnom Penh Current Date
   const getTodayPP = () => {
@@ -161,10 +163,13 @@ export default function ReportsPage() {
       {/* Print Title Header (Visible only when Printing) */}
       <div className="hidden print:block text-center border-b pb-4 mb-4">
         <h1 className="text-2xl font-bold text-slate-900 font-sans">
-          TheDemo Coffee — របាយការណ៍វត្តមាន និងម៉ោងធ្វើការ
+          {company.name || "AttendPro"} — របាយការណ៍វត្តមាន និងម៉ោងធ្វើការ
         </h1>
         <p className="text-xs text-slate-600 mt-1 font-mono">
-          កាលបរិច្ឆេទ៖ {startDate} ដល់ {endDate} • សាខា៖ THE ONE COFFEE (ស្វាយរៀង)
+          កាលបរិច្ឆេទ៖ {startDate} ដល់ {endDate} • សាខា៖{" "}
+          {branchId === "all"
+            ? "គ្រប់សាខា"
+            : reportData?.branches?.find((b: any) => b.id === branchId)?.name || "គ្រប់សាខា"}
         </p>
       </div>
 
@@ -460,7 +465,7 @@ export default function ReportsPage() {
 
       {/* Print Footer */}
       <div className="hidden print:flex items-center justify-between text-xs text-slate-500 pt-6 border-t border-slate-300">
-        <div>ប្រព័ន្ធ AttendPro — TheDemo Coffee</div>
+        <div>ប្រព័ន្ធ AttendPro — {company.name || "AttendPro"}</div>
         <div>បោះពុម្ពនៅម៉ោង៖ {new Date().toLocaleString("km-KH", { timeZone: "Asia/Phnom_Penh" })}</div>
       </div>
     </div>

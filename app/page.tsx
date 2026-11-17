@@ -38,7 +38,7 @@ export default function HomePage() {
                 Phase 1 Live
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium">TheDemo Coffee</p>
+            <p className="text-xs text-slate-400 font-medium">HR & Attendance System</p>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ export default function HomePage() {
       <main className="flex-1 max-w-5xl mx-auto px-6 py-12 sm:py-20 flex flex-col items-center text-center justify-center relative z-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-6">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិកអនឡាញ • TheDemo Coffee</span>
+          <span>ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិកអនឡាញ</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
@@ -169,7 +169,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-900/80 px-6 py-6 text-center text-xs text-slate-500 relative z-20">
-        © {new Date().getFullYear()} AttendPro — ដំណើរការសម្រាប់ TheDemo Coffee។ រក្សាសិទ្ធិគ្រប់យ៉ាង។
+        © {new Date().getFullYear()} AttendPro — ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិក។ រក្សាសិទ្ធិគ្រប់យ៉ាង។
       </footer>
     </div>
   );
